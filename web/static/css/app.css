@@ -1,0 +1,228 @@
+/* Pulsar — application stylesheet
+   Design tokens + bespoke components that complement Tailwind utilities.
+   Theme: 8-bit pixel "warm coffee" — brown + cream, sharp corners, hard shadows.
+   JS contract (do not rename): --pulsar-*, .htmx-request, .spinner, .dropzone,
+   .dropzone.is-dragover, #toast, .toast, .toast--error, .toast--success. */
+
+:root {
+  /* Variable NAMES are kept (documented JS contract); only values change.
+     Palette = warm coffee: cream paper, dark-coffee ink, caramel accent. */
+  --pulsar-bg: #f4ece0;            /* page canvas — warm cream paper */
+  --pulsar-surface: #fffaf2;       /* card / lifted surface */
+  --pulsar-border: #e3d7c4;        /* hairline border on cream */
+  --pulsar-text: #2b1d12;          /* primary text — dark coffee */
+  --pulsar-muted: #6b5440;         /* secondary text — cocoa */
+  --pulsar-accent: #b06a2c;        /* caramel / amber — the single brand accent */
+  --pulsar-accent-strong: #8f511e; /* burnt caramel — hover/active */
+  --pulsar-glow: rgba(176, 106, 44, 0.35);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--pulsar-bg);
+  color: var(--pulsar-text);
+  /* Subtle pixel-grid texture so the page reads as 8-bit paper,
+     never a flat color block. Kept whisper-soft for readability. */
+  background-image:
+    linear-gradient(rgba(43, 29, 18, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 29, 18, 0.035) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-attachment: fixed;
+}
+
+a { color: inherit; text-decoration: none; }
+
+input, textarea, select, button { font: inherit; }
+
+code, pre, .font-mono {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+/* Two display faces, both with verified Cyrillic coverage:
+   .font-pixel  → Press Start 2P — true 8-bit arcade face. Use ONLY for short
+                  UI text (logo, badges, buttons, nav chips). Wide + all-caps,
+                  so long Russian headings would overflow.
+   .font-display→ JetBrains Mono — crisp monospace with perfect Cyrillic.
+                  Used for all multi-word Russian headings. Keeps the retro
+                  "terminal/geek" vibe without breaking glyphs. */
+.font-pixel, .pixel-font {
+  font-family: "Press Start 2P", "JetBrains Mono", ui-monospace, monospace;
+  /* Pixel art must stay crisp — disable edge smoothing or it looks muddy. */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.font-display {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Crisp edges for any inline pixel-art sprites / favicons. */
+img[src*=".svg"], .pixelated { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* ---- htmx-driven UI states (keep) ---- */
+.htmx-request { opacity: 0.6; pointer-events: none; transition: opacity .15s; }
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator { display: inline-flex; }
+
+/* ---- Spinner ---- */
+.spinner {
+  width: 1rem; height: 1rem;
+  border: 2px solid rgba(43, 29, 18, .15);
+  border-top-color: var(--pulsar-accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Toast notifications ---- */
+#toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 60;
+  display: flex; flex-direction: column; gap: .5rem;
+  max-width: calc(100vw - 3rem);
+}
+.toast {
+  padding: .875rem 1.125rem; border-radius: .25rem;
+  background: #fffaf2; border: 2px solid var(--pulsar-text);
+  /* Hard offset shadow = the chunky stamped pixel-card look. */
+  box-shadow: 4px 4px 0 0 var(--pulsar-text);
+  animation: toast-in .25s cubic-bezier(.16, 1, .3, 1);
+  font-size: .875rem;
+  color: var(--pulsar-text);
+}
+.toast--error { border-color: #a23b29; color: #7a2b1c; box-shadow: 4px 4px 0 0 #a23b29; }
+.toast--success { border-color: #3f6b35; color: #2f5227; box-shadow: 4px 4px 0 0 #3f6b35; }
+@keyframes toast-in {
+  from { transform: translateY(12px) scale(.96); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ---- Drag-and-drop zone ---- */
+.dropzone {
+  border: 3px dashed #9a8770;
+  border-radius: .25rem;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+  cursor: pointer;
+  background: #fffaf2;
+}
+.dropzone:hover {
+  border-color: var(--pulsar-accent);
+  background: #fbf3e7;
+}
+.dropzone.is-dragover {
+  border-color: var(--pulsar-accent);
+  background-color: #f7ead8;
+  transform: scale(1.01);
+}
+
+/* ---- Scrollbars ---- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c9b89e; border-radius: 0; border: 2px solid var(--pulsar-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--pulsar-accent); }
+
+/* ---- Keyframes used via Tailwind arbitrary values ---- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(176, 106, 44, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(176, 106, 44, .25); }
+}
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(.95); }
+}
+
+/* ---- Reusable animation utility classes ---- */
+.animate-fade-in { animation: fadeIn .4s ease-out both; }
+.animate-fade-in-up { animation: fadeInUp .6s cubic-bezier(.16, 1, .3, 1) both; }
+.animate-glow { animation: glowPulse 2.5s ease-in-out infinite; }
+
+/* Staggered children for lists/grids. */
+.stagger > * { animation: fadeInUp .5s cubic-bezier(.16, 1, .3, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: .05s; }
+.stagger > *:nth-child(2) { animation-delay: .1s; }
+.stagger > *:nth-child(3) { animation-delay: .15s; }
+.stagger > *:nth-child(4) { animation-delay: .2s; }
+.stagger > *:nth-child(5) { animation-delay: .25s; }
+.stagger > *:nth-child(6) { animation-delay: .3s; }
+
+/* Glassmorphism surface used for cards/headers.
+   In the pixel theme this becomes a solid cream panel with a hard border
+   (blur removed to match the flat 8-bit look; class kept so templates don't break). */
+.glass {
+  background: var(--pulsar-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Formerly an animated gradient headline. In the pixel theme the accent is a
+   single solid caramel — class kept for compatibility, restyled to solid color. */
+.gradient-text {
+  background: none;
+  -webkit-text-fill-color: initial;
+  background-clip: initial;
+  color: var(--pulsar-accent);
+}
+
+/* Copy-on-click affordance for <code> blocks. */
+.copyable {
+  position: relative;
+  cursor: pointer;
+  transition: background-color .15s;
+}
+.copyable:hover { background-color: rgba(176, 106, 44, .15); }
+.copyable:active { transform: scale(.997); }
+
+/* Decorative blurred blobs for hero sections.
+   Neutralized in the pixel theme (no blur/glow); class retained harmlessly
+   so existing markup never breaks. */
+.blob {
+  position: absolute;
+  border-radius: 0;
+  filter: none;
+  opacity: .5;
+  pointer-events: none;
+  animation: blob 18s ease-in-out infinite;
+}
+
+/* Focus ring for keyboard users on interactive elements. */
+:focus-visible {
+  outline: 2px solid var(--pulsar-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

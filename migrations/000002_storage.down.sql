@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS users_assign_default_plan ON users;
+DROP FUNCTION IF EXISTS assign_default_plan();
+DROP MATERIALIZED VIEW IF EXISTS storage_usage;
+DROP TABLE IF EXISTS custom_domains;
+DROP TABLE IF EXISTS usage_events;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS plans;
+DROP TABLE IF EXISTS api_keys;
+DROP TABLE IF EXISTS objects;
+DROP TABLE IF EXISTS buckets;

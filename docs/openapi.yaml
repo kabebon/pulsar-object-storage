@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: Pulsar API
+  version: 1.0.0
+  description: |
+    Pulsar — S3-совместимое объектное хранилище с доставкой через CDN.
+
+    ## Аутентификация
+    Все эндпоинты требуют API-ключ в заголовке `Authorization: Bearer pk_live_...`.
+    Ключи выпускаются в веб-кабинете (`/app/api-keys`) и показываются один раз.
+
+    ## Загрузка файлов
+    Используйте двухэтапный поток:
+      1. `POST /v1/buckets/{id}/objects/presign-upload` — получите одноразовую PUT-ссылку.
+      2. Загрузите файл напрямую в S3 по этой ссылке.
+      3. `POST /v1/buckets/{id}/objects/confirm` — зафиксируйте метаданные объекта.
+
+    ## Ошибки
+    Ошибки возвращаются в формате RFC 9457 (`application/problem+json`):
+    ```json
+    {"type":".../validation_error","title":"Validation failed","status":400,"code":"validation_error","detail":"..."}
+    ```
+  contact:
+    name: Pulsar Support
+    url: https://pulsar.example.com/docs
+servers:
+  - url: https://pulsar.example.com/api/v1
+    description: production
+  - url: http://localhost:8080/api/v1
+    description: local
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: pk_live_XXXX
+      description: API-ключ в формате `pk_live_<secret>`.
+  schemas:
+    Bucket:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        name: { type: string, example: my-bucket }
+        region: { type: string, example: us-east-1 }
+        visibility: { type: string, enum: [private, public] }
+        cdn_enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ObjectMeta:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        bucket_id: { type: string, format: uuid }
+        key: { type: string }
+        size: { type: integer, format: int64 }
+        content_type: { type: string }
+        etag: { type: string }
+        sha256: { type: string }
+        version: { type: integer }
+        uploaded_at: { type: string, format: date-time }
+    APIKey:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        key_prefix: { type: string }
+        scopes: { type: array, items: { type: string } }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    Problem:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        detail: { type: string }
+        fields: { type: object, additionalProperties: { type: string } }
+    Usage:
+      type: object
+      properties:
+        storage_bytes: { type: integer, format: int64 }
+        bandwidth_bytes: { type: integer, format: int64 }
+        api_calls: { type: integer, format: int64 }
+
+paths:
+  /:
+    get:
+      summary: Корневой индекс API
+      responses:
+        '200':
+          description: Метаданные API
+  /buckets:
+    get:
+      summary: Список бакетов
+      responses:
+        '200':
+          description: Список бакетов пользователя
+    post:
+      summary: Создать бакет
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                region: { type: string }
+                visibility: { type: string, enum: [private, public] }
+                cdn_enabled: { type: boolean }
+      responses:
+        '201': { description: Бакет создан }
+        '409': { description: Имя занято }
+  /buckets/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Получить бакет
+      responses: { '200': { description: Бакет }, '404': { description: Не найден } }
+    patch:
+      summary: Обновить настройки бакета
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visibility: { type: string, enum: [private, public] }
+                cdn_enabled: { type: boolean }
+      responses: { '200': { description: Бакет обновлён } }
+    delete:
+      summary: Удалить бакет (и все объекты)
+      responses: { '204': { description: Удалён } }
+  /buckets/{id}/objects:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+      - in: query
+        name: prefix
+        schema: { type: string }
+    get:
+      summary: Список объектов
+      responses: { '200': { description: Список объектов } }
+  /buckets/{id}/objects/presign-upload:
+    post:
+      summary: Получить presigned PUT URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key]
+              properties:
+                key: { type: string }
+                content_type: { type: string }
+                size: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Подписанная ссылка на загрузку
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  method: { type: string, example: PUT }
+  /buckets/{id}/objects/confirm:
+    post:
+      summary: Зафиксировать метаданные после загрузки
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key: { type: string }
+                content_type: { type: string }
+                size: { type: integer, format: int64 }
+                etag: { type: string }
+                sha256: { type: string }
+      responses: { '201': { description: Объект записан } }
+  /buckets/{id}/objects/{key}/presign-download:
+    parameters:
+      - in: path
+        name: key
+        required: true
+        schema: { type: string }
+    get:
+      summary: Получить presigned GET URL
+      responses: { '200': { description: Подписанная ссылка на скачивание } }
+  /buckets/{id}/objects/{key}:
+    delete:
+      summary: Удалить объект
+      responses: { '204': { description: Удалён } }
+  /api-keys:
+    get:
+      summary: Список API-ключей
+      responses: { '200': { description: Список ключей } }
+    post:
+      summary: Создать API-ключ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                scopes: { type: array, items: { type: string } }
+      responses:
+        '201':
+          description: Ключ создан (secret показывается один раз)
+  /api-keys/{id}:
+    delete:
+      summary: Отозвать ключ
+      responses: { '204': { description: Отозван } }
+  /me:
+    get:
+      summary: Профиль текущего пользователя
+      responses: { '200': { description: Профиль } }
+  /me/usage:
+    get:
+      summary: Сводка использования (хранилище, трафик, API-вызовы)
+      responses: { '200': { description: Сводка } }

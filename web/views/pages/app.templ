@@ -1,0 +1,113 @@
+package pages
+
+import "pulsar/web/views/layouts"
+
+// AppLayout renders the in-app chrome (sidebar + main) for authenticated pages.
+// Pages compose their content into the children slot.
+templ AppLayout(props layouts.LayoutProps) {
+	@layouts.Base(props) {
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid lg:grid-cols-[240px_1fr] gap-8 animate-fade-in">
+			@sidebar(props)
+			<div class="min-w-0">
+				{ children... }
+			</div>
+		</div>
+	}
+}
+
+templ sidebar(props layouts.LayoutProps) {
+	<aside class="hidden lg:block">
+		<div class="sticky top-24 space-y-1">
+			@navItem("/app", "dashboard", "Обзор", props.Active, "grid")
+			@navItem("/app/buckets", "buckets", "Файлы", props.Active, "folder")
+			@navItem("/app/api-keys", "api-keys", "API-ключи", props.Active, "key")
+			@navItem("/app/billing", "billing", "Тариф и оплата", props.Active, "card")
+			@navItem("/app/audit", "audit", "Журнал", props.Active, "list")
+			@navItem("/app/settings", "settings", "Настройки", props.Active, "settings")
+			if props.Auth != nil {
+				<div class="mt-6 pt-6 border-t-2 border-[#e3d7c4]">
+					<div class="flex items-center gap-3 px-3 py-2">
+						<span class="inline-flex items-center justify-center w-9 h-9 bg-[#b06a2c] border-2 border-[#2b1d12] text-sm font-semibold text-[#fffaf2]">{ initial(props.Auth.Name) }</span>
+						<div class="min-w-0">
+							<div class="text-sm font-medium text-[#2b1d12] truncate">{ props.Auth.Name }</div>
+							<div class="text-xs text-[#9a8770] truncate">{ props.Auth.Email }</div>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	</aside>
+}
+
+templ navItem(href, key, label, active, icon string) {
+	<a
+		href={ href }
+		class={ "group flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200 border-2",
+			templ.KV("text-[#fffaf2] bg-[#b06a2c] border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12]", active == key),
+			templ.KV("text-[#3d2a1c] border-transparent hover:bg-[#f0e6d6]", active != key) }
+	>
+		<span class={ "transition-colors duration-200", templ.KV("text-[#fffaf2]", active == key), templ.KV("text-[#9a8770] group-hover:text-[#b06a2c]", active != key) }>
+			@navIcon(icon)
+		</span>
+		<span>{ label }</span>
+		<span class={ "ml-auto w-1.5 h-5 bg-[#b06a2c] transition-opacity duration-200", templ.KV("opacity-100", active == key), templ.KV("opacity-0", active != key) }></span>
+	</a>
+}
+
+templ navIcon(name string) {
+	<svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+		switch name {
+		case "grid":
+			<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+		case "folder":
+			<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
+		case "key":
+			<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.5 12.5 8-8M16 4l3 3-3 3"/>
+		case "globe":
+			<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+		case "card":
+			<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>
+		case "list":
+			<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+		case "settings":
+			<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/>
+		}
+	</svg>
+}
+
+// Dashboard page (overview). Shows account info and quick links.
+templ Dashboard(props layouts.LayoutProps, email, plan string) {
+	@AppLayout(props) {
+		<h1 class="font-pixel text-2xl text-[#2b1d12]">Добро пожаловать</h1>
+		<p class="mt-1.5 text-[#6b5440]">Аккаунт <span class="text-[#2b1d12]">{ email }</span> · тариф <span class="text-[#b06a2c] capitalize">{ plan }</span></p>
+		<div class="mt-8 grid sm:grid-cols-2 gap-4 stagger">
+			@quickLink("/app/buckets", "Файлы", "Загружайте, храните и делитесь файлами по ссылкам.", "folder")
+			@quickLink("/app/api-keys", "API-ключи", "Сгенерируйте токен для доступа по REST API.", "key")
+		</div>
+	}
+}
+
+templ quickLink(href, title, desc, icon string) {
+	<a href={ href } class="group block p-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[6px_6px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">
+		<div class="flex items-start justify-between">
+			<div class="inline-flex items-center justify-center w-11 h-11 bg-[#b06a2c] border-2 border-[#2b1d12] text-[#fffaf2] group-hover:scale-110 transition-all duration-300">
+				@navIcon(icon)
+			</div>
+			<svg class="w-5 h-5 text-[#9a8770] group-hover:text-[#b06a2c] group-hover:translate-x-1 transition-all duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+		</div>
+		<h3 class="mt-4 font-pixel text-lg text-[#2b1d12]">{ title }</h3>
+		<p class="mt-1.5 text-sm text-[#6b5440]">{ desc }</p>
+	</a>
+}
+
+// initial returns the first letter of a name, fallback to "?".
+func initial(name string) string {
+	if name == "" {
+		return "?"
+	}
+	r := []rune(name)
+	if r[0] >= 'a' && r[0] <= 'z' {
+		return string(r[0] - 32)
+	}
+	return string(r[0])
+}

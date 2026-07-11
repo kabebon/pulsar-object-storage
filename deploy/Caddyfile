@@ -1,0 +1,48 @@
+# Pulsar — Caddyfile.
+# Reverse-proxies the app and terminates TLS automatically (Let's Encrypt).
+# In local dev the default profile is not started; in production set the
+# hostname below and `docker compose --profile prod up -d`.
+#
+# For custom-domain on-demand TLS (Phase 6) we use the `on_demand_tls` ask
+# endpoint to verify a domain is registered before issuing a certificate.
+
+{
+	email admin@pulsar.example.com
+	# Allow ACME HTTP-01 challenges.
+	# On-demand issuance for customer domains:
+	on_demand_tls {
+		ask http://pulsar:8080/api/v1/domains/verify-tls
+		interval 5m
+		burst 10
+	}
+}
+
+# Public app.
+{$PULSAR_HOST:pulsar.example.com} {
+	reverse_proxy pulsar:8080 {
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+	encode zstd gzip
+	log {
+		output stdout
+		format console
+	}
+}
+
+# CDN front: serve public objects directly from origin with strong caching.
+# In production this hostname would be backed by a real CDN (CloudFront,
+# Cloudflare) and only Caddy here as fallback origin.
+cdn.pulsar.example.com {
+	reverse_proxy pulsar:8080
+	encode zstd gzip
+	header Cache-Control "public, max-age=3600"
+}
+
+# Example of on-demand TLS for a customer domain (wildcard vhost):
+# https:// {
+# 	tls {
+# 		get_certificate http://pulsar:8080/api/v1/domains/cert
+# 	}
+# 	reverse_proxy pulsar:8080
+# }

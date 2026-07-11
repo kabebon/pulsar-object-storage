@@ -1,0 +1,189 @@
+package pages
+
+import "pulsar/web/views/layouts"
+
+// PlanViewModel is the pricing-card view model used on the public pricing page
+// and the in-app billing page.
+type PlanViewModel struct {
+	Slug              string
+	Name              string
+	PriceMonthly      int64 // cents
+	PriceYearly       int64 // cents
+	StorageGB         int64
+	BandwidthGBMonth  int64
+	MaxBuckets        int
+	CustomDomains     int
+	Highlighted       bool
+	Current           bool
+}
+
+templ Pricing(props layouts.LayoutProps, plans []PlanViewModel) {
+	@layouts.PublicLayout(props) {
+		<section class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+			<div class="blob w-80 h-80 bg-[#fffaf2] top-0 left-1/2 -translate-x-1/2 opacity-50 border-2 border-[#e3d7c4]"></div>
+			<div class="relative text-center max-w-2xl mx-auto animate-fade-in-up">
+				<span class="text-xs font-pixel uppercase tracking-widest text-[#b06a2c]">Тарифы</span>
+				<h1 class="mt-3 font-pixel text-4xl sm:text-5xl text-[#2b1d12] tracking-tight">Простые честные цены</h1>
+				<p class="mt-4 text-lg text-[#6b5440]">Платите помесячно или экономьте 20% при годовой оплате. Без скрытых лимитов.</p>
+			</div>
+			<div class="relative mt-14 grid md:grid-cols-3 gap-6 stagger">
+				for _, p := range plans {
+					@planCard(p)
+				}
+			</div>
+		</section>
+	}
+}
+
+templ planCard(p PlanViewModel) {
+	<div class={ planCardClass(p.Highlighted) }>
+		if p.Highlighted {
+			<!-- Badge sits above the card; card has padding-top to avoid overlap -->
+			<div class="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap z-10">
+				<span class="px-3 py-1 text-[10px] font-pixel text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] uppercase tracking-widest">★ Популярный</span>
+			</div>
+		}
+		<h3 class="font-pixel text-xl text-[#2b1d12]">{ p.Name }</h3>
+		<div class="mt-5 flex items-baseline gap-1.5">
+			<span class="font-pixel text-5xl text-[#2b1d12] tracking-tight">{ formatPriceMonthly(p.PriceMonthly) }</span>
+			<span class="text-[#6b5440]">/мес</span>
+		</div>
+		<p class="mt-2 text-sm text-[#9a8770]">{ formatPriceYearly(p.PriceYearly) } в год</p>
+		<ul class="mt-7 space-y-3.5 text-sm flex-1">
+			@planFeature(formatStorage(p.StorageGB) + " хранилища")
+			@planFeature(formatMaxBuckets(p.MaxBuckets))
+			@planFeature(formatDomains(p.CustomDomains))
+		</ul>
+		<a href={ "/register?plan=" + p.Slug } class={ planButtonClass(p.Highlighted) }>Выбрать { p.Name }</a>
+	</div>
+}
+
+func planCardClass(highlighted bool) string {
+	// overflow-hidden removed so the absolute badge can extend above the card.
+	base := "group relative flex flex-col transition-all duration-200 "
+	if highlighted {
+		return base + "p-8 pt-10 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[8px_8px_0_0_#b06a2c] hover:-translate-x-1 hover:-translate-y-1"
+	}
+	return base + "p-8 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5"
+}
+
+func planButtonClass(highlighted bool) string {
+	if highlighted {
+		return "mt-8 block text-center px-5 py-3.5 font-pixel text-lg transition-all duration-200 text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5"
+	}
+	return "mt-8 block text-center px-5 py-3.5 font-pixel text-lg transition-all duration-200 text-[#2b1d12] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:bg-[#f0e6d6] hover:-translate-x-0.5 hover:-translate-y-0.5"
+}
+
+templ planFeature(text string) {
+	<li class="flex items-start gap-2.5 text-[#3d2a1c]">
+		<svg class="w-5 h-5 text-[#b06a2c] flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+		<span>{ text }</span>
+	</li>
+}
+
+// --- formatting helpers (unchanged logic, kept for compatibility) ---
+
+func formatPriceMonthly(cents int64) string {
+	if cents == 0 {
+		return "0 ₽"
+	}
+	return formatRub(cents)
+}
+
+func formatPriceYearly(cents int64) string {
+	if cents == 0 {
+		return "0 ₽"
+	}
+	return formatRub(cents)
+}
+
+func formatRub(cents int64) string {
+	rub := cents / 100
+	if rub >= 1000 {
+		return formatThousands(rub) + " ₽"
+	}
+	return intToStr(rub) + " ₽"
+}
+
+func formatStorage(gb int64) string {
+	if gb <= 0 {
+		return "Без лимита"
+	}
+	if gb >= 1024 {
+		return intToStr(gb/1024) + " ТБ"
+	}
+	return intToStr(gb) + " ГБ"
+}
+
+func formatBandwidth(gb int64) string {
+	if gb <= 0 {
+		return "Без лимита"
+	}
+	if gb >= 1024 {
+		return intToStr(gb/1024) + " ТБ"
+	}
+	return intToStr(gb) + " ГБ"
+}
+
+func formatMaxBuckets(n int) string {
+	if n <= 0 {
+		return "Папки без лимита"
+	}
+	return intToStr(int64(n)) + " " + pluralRu(n, "папка", "папки", "папок")
+}
+
+func formatDomains(n int) string {
+	// Domains feature was removed (this is a file cloud, not CDN).
+	// Repurposed as "API access" line that every plan includes.
+	return "REST API доступ"
+}
+
+// pluralRu returns Russian plural suffix for a count.
+func pluralRu(n int, one, few, many string) string {
+	mod10 := n % 10
+	mod100 := n % 100
+	if mod10 == 1 && mod100 != 11 {
+		return one
+	}
+	if mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20) {
+		return few
+	}
+	return many
+}
+
+func formatThousands(n int64) string {
+	s := intToStr(n)
+	if len(s) <= 3 {
+		return s
+	}
+	out := make([]byte, 0, len(s)+len(s)/3)
+	for i, c := range []byte(s) {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			out = append(out, ' ')
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
+func intToStr(n int64) string {
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var b [20]byte
+	i := len(b)
+	for n > 0 {
+		i--
+		b[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		b[i] = '-'
+	}
+	return string(b[i:])
+}

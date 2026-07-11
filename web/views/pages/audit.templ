@@ -1,0 +1,99 @@
+package pages
+
+import (
+	"pulsar/internal/models"
+	"pulsar/web/views/layouts"
+)
+
+// AuditRow is the view model for an audit log entry.
+type AuditRow struct {
+	Action    models.AuditAction
+	IP        string
+	UserAgent string
+	CreatedAt string
+}
+
+templ AuditPage(props layouts.LayoutProps, rows []AuditRow) {
+	@AppLayout(props) {
+		<div>
+			<h1 class="font-pixel text-2xl text-[#2b1d12]">Журнал событий</h1>
+			<p class="mt-1.5 text-sm text-[#6b5440]">История действий в аккаунте — входы, загрузки, изменения.</p>
+		</div>
+
+		<div class="mt-6 border-2 border-[#2b1d12] overflow-hidden bg-[#fffaf2] shadow-[5px_5px_0_0_#2b1d12]">
+			if len(rows) == 0 {
+				<div class="p-12 text-center text-[#9a8770]">Событий пока нет.</div>
+			} else {
+				<table class="w-full text-sm">
+					<thead class="text-[#6b5440] text-left border-b-2 border-[#e3d7c4] bg-[#f7f0e4]">
+						<tr>
+							<th class="px-5 py-3.5 font-medium">Событие</th>
+							<th class="px-5 py-3.5 font-medium">IP</th>
+							<th class="px-5 py-3.5 font-medium">Время</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#e3d7c4]">
+						for _, r := range rows {
+							<tr class="hover:bg-[#fbf3e7] transition-colors duration-150">
+								<td class="px-5 py-3.5">
+									<span class="inline-flex items-center gap-2">
+										@auditIcon(r.Action)
+										<span class="text-[#3d2a1c]">{ auditLabel(r.Action) }</span>
+									</span>
+								</td>
+								<td class="px-5 py-3.5 text-[#6b5440] font-mono text-xs">{ r.IP }</td>
+								<td class="px-5 py-3.5 text-[#9a8770] text-xs">{ r.CreatedAt }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</div>
+	}
+}
+
+templ auditIcon(a models.AuditAction) {
+	switch a {
+	case models.AuditLogin:
+		<svg class="w-4 h-4 text-[#3f6b35]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+	case models.AuditLoginFailed:
+		<svg class="w-4 h-4 text-[#a23b29]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6m0-6-6 6"/></svg>
+	case models.AuditLogout:
+		<svg class="w-4 h-4 text-[#9a8770]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+	case models.AuditRegister:
+		<svg class="w-4 h-4 text-[#b06a2c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0ZM19 8v6M22 11h-6"/></svg>
+	default:
+		<svg class="w-4 h-4 text-[#9a8770]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+	}
+}
+
+func auditLabel(a models.AuditAction) string {
+	switch a {
+	case models.AuditLogin:
+		return "Вход в аккаунт"
+	case models.AuditLoginFailed:
+		return "Неудачная попытка входа"
+	case models.AuditLogout:
+		return "Выход из аккаунта"
+	case models.AuditRegister:
+		return "Регистрация"
+	case models.AuditPasswordReset:
+		return "Смена пароля"
+	case models.AuditEmailVerified:
+		return "Подтверждение email"
+	case models.AuditAPIKeyCreated:
+		return "Создание API-ключа"
+	case models.AuditAPIKeyRevoked:
+		return "Отзыв API-ключа"
+	case models.AuditBucketCreated:
+		return "Создание папки"
+	case models.AuditBucketDeleted:
+		return "Удаление папки"
+	case models.AuditObjectDeleted:
+		return "Удаление файла"
+	case models.AuditSubscriptionChanged:
+		return "Смена тарифа"
+	default:
+		return string(a)
+	}
+}

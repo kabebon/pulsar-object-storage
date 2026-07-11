@@ -1,0 +1,86 @@
+package pages
+
+import (
+	"pulsar/internal/models"
+	"pulsar/web/views/layouts"
+)
+
+// SettingsPage renders profile + password change forms.
+templ SettingsPage(props layouts.LayoutProps, user *models.User, errs []string, success string) {
+	@AppLayout(props) {
+		<h1 class="font-pixel text-2xl text-[#2b1d12]">Настройки</h1>
+
+		if len(errs) > 0 {
+			<div class="mt-5 border-2 border-[#a23b29] bg-[#f3dcd6] p-3.5 text-sm text-[#7a2b1c]">
+				<ul class="list-disc list-inside space-y-1">
+					for _, e := range errs {
+						<li>{ e }</li>
+					}
+				</ul>
+			</div>
+		}
+		if success != "" {
+			<div class="mt-5 border-2 border-[#3f6b35] bg-[#dde7d5] p-3.5 text-sm text-[#2f5227]">{ success }</div>
+		}
+
+		<!-- Profile -->
+		<div class="mt-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12] p-6">
+			<h2 class="font-pixel text-lg text-[#2b1d12]">Профиль</h2>
+			<p class="mt-1 text-sm text-[#6b5440]">Ваше имя и email, видимые в кабинете.</p>
+			<form method="POST" action="/app/settings" class="mt-5 space-y-4 max-w-md">
+				<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+				<label class="block">
+					<span class="text-sm font-medium text-[#3d2a1c]">Имя</span>
+					<input type="text" name="name" value={ user.Name }
+						class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all text-[#2b1d12]"/>
+				</label>
+				<label class="block">
+					<span class="text-sm font-medium text-[#3d2a1c]">Email</span>
+					<input type="email" value={ user.Email } disabled
+						class="mt-1.5 w-full px-3.5 py-2.5 bg-[#f7f0e4] border-2 border-[#e3d7c4] text-[#9a8770] cursor-not-allowed"/>
+					<span class="block mt-1 text-xs text-[#9a8770]">Email нельзя изменить</span>
+				</label>
+				<button type="submit" class="px-5 py-2.5 font-pixel text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Сохранить</button>
+			</form>
+		</div>
+
+		<!-- Password -->
+		<div class="mt-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12] p-6">
+			<h2 class="font-pixel text-lg text-[#2b1d12]">Смена пароля</h2>
+			<p class="mt-1 text-sm text-[#6b5440]">После смены пароля все активные сессии будут завершены.</p>
+			<form method="POST" action="/app/settings/password" class="mt-5 space-y-4 max-w-md">
+				<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+				@pwFieldPlain("Текущий пароль", "current_password")
+				@pwFieldPlaceholder("Новый пароль", "new_password", "Минимум 8 символов")
+				@pwFieldPlain("Повторите новый пароль", "new_password_confirm")
+				<button type="submit" class="px-5 py-2.5 font-pixel text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Сменить пароль</button>
+			</form>
+		</div>
+
+		<!-- Danger zone -->
+		<div class="mt-6 border-2 border-[#a23b29] bg-[#f7e6e1] p-6">
+			<h2 class="font-pixel text-lg text-[#7a2b1c]">Выход из аккаунта</h2>
+			<p class="mt-1 text-sm text-[#6b5440]">Завершить текущую сессию.</p>
+			<form method="POST" action="/logout" class="mt-4">
+				<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+				<button type="submit" class="px-5 py-2.5 font-pixel text-[#7a2b1c] border-2 border-[#a23b29] bg-[#fffaf2] hover:bg-[#f3dcd6] transition-colors">Выйти</button>
+			</form>
+		</div>
+	}
+}
+
+templ pwFieldPlain(label, name string) {
+	<label class="block">
+		<span class="text-sm font-medium text-[#3d2a1c]">{ label }</span>
+		<input type="password" name={ name }
+			class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all placeholder:text-[#9a8770] text-[#2b1d12]"/>
+	</label>
+}
+
+templ pwFieldPlaceholder(label, name, placeholder string) {
+	<label class="block">
+		<span class="text-sm font-medium text-[#3d2a1c]">{ label }</span>
+		<input type="password" name={ name } placeholder={ placeholder }
+			class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all placeholder:text-[#9a8770] text-[#2b1d12]"/>
+	</label>
+}

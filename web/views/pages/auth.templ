@@ -1,0 +1,178 @@
+package pages
+
+import "pulsar/web/views/layouts"
+
+// AuthPageProps holds values shared by auth forms (flashes, prefilled email).
+type AuthPageProps struct {
+	Layout   layouts.LayoutProps
+	Email    string
+	Name     string
+	Token    string // for reset-password / verify-email
+	Errors   []string
+	Success  string
+}
+
+templ Login(p AuthPageProps) {
+	@layouts.PublicLayout(p.Layout) {
+		@authCard("С возвращением", "Войдите в свой кабинет", p) {
+			<form method="POST" action="/login" class="mt-7 space-y-4">
+				<input type="hidden" name="csrf_token" value={ p.Layout.CSRFToken }/>
+				@field("Email", "email", "you@example.com", p.Email, "email")
+				@passwordField("Пароль", "password", "")
+				<div class="flex items-center justify-between text-sm">
+					<label class="flex items-center gap-2 text-[#3d2a1c] cursor-pointer select-none">
+						<input type="checkbox" name="remember" class="w-4 h-4 accent-[#b06a2c]"/>
+						<span>Запомнить меня</span>
+					</label>
+					<a href="/forgot-password" class="text-[#b06a2c] hover:text-[#8f511e] transition-colors">Забыли пароль?</a>
+				</div>
+				<button type="submit" class="w-full py-3 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Войти</button>
+			</form>
+			<p class="mt-6 text-center text-sm text-[#6b5440]">
+				Нет аккаунта? <a href="/register" class="text-[#b06a2c] hover:text-[#8f511e] font-medium">Зарегистрироваться</a>
+			</p>
+		}
+	}
+}
+
+templ Register(p AuthPageProps) {
+	@layouts.PublicLayout(p.Layout) {
+		@authCard("Создать аккаунт", "Бесплатно: 5 ГБ хранилища и 50 ГБ трафика", p) {
+			<form method="POST" action="/register" class="mt-7 space-y-4">
+				<input type="hidden" name="csrf_token" value={ p.Layout.CSRFToken }/>
+				@field("Имя", "name", "Ваше имя", p.Name, "text")
+				@field("Email", "email", "you@example.com", p.Email, "email")
+				@passwordField("Пароль", "password", "Минимум 8 символов")
+				<button type="submit" class="w-full py-3 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Зарегистрироваться</button>
+			</form>
+			<p class="mt-6 text-center text-sm text-[#6b5440]">
+				Уже есть аккаунт? <a href="/login" class="text-[#b06a2c] hover:text-[#8f511e] font-medium">Войти</a>
+			</p>
+		}
+	}
+}
+
+templ ForgotPassword(p AuthPageProps) {
+	@layouts.PublicLayout(p.Layout) {
+		@authCard("Сброс пароля", "Отправим ссылку для восстановления на ваш email", p) {
+			<form method="POST" action="/forgot-password" class="mt-7 space-y-4">
+				<input type="hidden" name="csrf_token" value={ p.Layout.CSRFToken }/>
+				@field("Email", "email", "you@example.com", p.Email, "email")
+				<button type="submit" class="w-full py-3 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Отправить ссылку</button>
+			</form>
+			<p class="mt-6 text-center text-sm text-[#6b5440]">
+				Вспомнили пароль? <a href="/login" class="text-[#b06a2c] hover:text-[#8f511e] font-medium">Войти</a>
+			</p>
+		}
+	}
+}
+
+templ ResetPassword(p AuthPageProps) {
+	@layouts.PublicLayout(p.Layout) {
+		@authCard("Новый пароль", "Придумайте новый пароль для аккаунта", p) {
+			<form method="POST" action={ "/reset-password?token=" + p.Token } class="mt-7 space-y-4">
+				<input type="hidden" name="csrf_token" value={ p.Layout.CSRFToken }/>
+				<input type="hidden" name="token" value={ p.Token }/>
+				@passwordField("Новый пароль", "password", "Минимум 8 символов")
+				@passwordField("Повторите пароль", "password_confirm", "")
+				<button type="submit" class="w-full py-3 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Сохранить пароль</button>
+			</form>
+		}
+	}
+}
+
+templ VerifyEmail(p AuthPageProps) {
+	@layouts.PublicLayout(p.Layout) {
+		<div class="max-w-md mx-auto px-4 py-20 animate-fade-in-up">
+			<div class="border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[6px_6px_0_0_#2b1d12] p-8 text-center">
+				if p.Success != "" {
+					<div class="w-16 h-16 mx-auto bg-[#3f6b35] border-2 border-[#2b1d12] flex items-center justify-center animate-glow">
+						<svg class="w-8 h-8 text-[#fffaf2]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+					</div>
+					<h1 class="mt-5 font-pixel text-2xl text-[#2b1d12]">Готово!</h1>
+					<p class="mt-2 text-[#3d2a1c]">{ p.Success }</p>
+					<a href="/login" class="mt-6 inline-flex items-center gap-2 px-6 py-3 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Войти в кабинет</a>
+				} else {
+					<div class="w-16 h-16 mx-auto bg-[#b87d20] border-2 border-[#2b1d12] flex items-center justify-center">
+						<svg class="w-8 h-8 text-[#fffaf2]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+					</div>
+					<h1 class="mt-5 font-pixel text-2xl text-[#2b1d12]">Проверьте почту</h1>
+					<p class="mt-2 text-[#3d2a1c]">Мы отправили ссылку для подтверждения. Проверьте почту, включая папку «Спам».</p>
+				}
+				if len(p.Errors) > 0 {
+					<div class="mt-5 border-2 border-[#a23b29] bg-[#f3dcd6] p-3 text-sm text-[#7a2b1c] text-left">
+						<ul class="list-disc list-inside space-y-1">
+							for _, e := range p.Errors {
+								<li>{ e }</li>
+							}
+						</ul>
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+
+// authCard is the shared wrapper for centered auth forms.
+templ authCard(title, subtitle string, p AuthPageProps) {
+	<div class="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
+		<div class="blob w-72 h-72 bg-[#fffaf2] top-[10%] left-[-10%] opacity-50 border-2 border-[#e3d7c4]"></div>
+		<div class="blob w-64 h-64 bg-[#fffaf2] bottom-[10%] right-[-5%] opacity-40 border-2 border-[#e3d7c4]" style="animation-delay: -8s"></div>
+		<div class="relative w-full max-w-md animate-fade-in-up">
+			<div class="border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[6px_6px_0_0_#2b1d12] p-8">
+				<div class="text-center">
+					<a href="/" class="inline-flex items-center gap-2 font-pixel text-xl text-[#2b1d12] lowercase">
+						<span class="inline-flex w-8 h-8 items-center justify-center bg-[#b06a2c] border-2 border-[#2b1d12]">
+							<svg class="w-5 h-5 text-[#fffaf2]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2a10 10 0 0 1 0 20M12 2a10 10 0 0 0 0 20" opacity=".55"/></svg>
+						</span>
+						Pulsar
+					</a>
+					<h1 class="mt-5 font-pixel text-2xl text-[#2b1d12]">{ title }</h1>
+					<p class="mt-1.5 text-sm text-[#6b5440]">{ subtitle }</p>
+				</div>
+				@flashes(p.Errors, p.Success)
+				{ children... }
+			</div>
+		</div>
+	</div>
+}
+
+templ flashes(errors []string, success string) {
+	if len(errors) > 0 {
+		<div class="mt-5 border-2 border-[#a23b29] bg-[#f3dcd6] p-3.5 text-sm text-[#7a2b1c]">
+			<ul class="list-disc list-inside space-y-1">
+				for _, e := range errors {
+					<li>{ e }</li>
+				}
+			</ul>
+		</div>
+	}
+	if success != "" {
+		<div class="mt-5 border-2 border-[#3f6b35] bg-[#dde7d5] p-3.5 text-sm text-[#2f5227]">{ success }</div>
+	}
+}
+
+templ field(label, name, placeholder, value, typ string) {
+	<label class="block">
+		<span class="text-sm font-medium text-[#3d2a1c]">{ label }</span>
+		<input
+			type={ typ }
+			name={ name }
+			value={ value }
+			placeholder={ placeholder }
+			class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all duration-200 placeholder:text-[#9a8770] text-[#2b1d12]"
+		/>
+	</label>
+}
+
+templ passwordField(label, name, placeholder string) {
+	<label class="block">
+		<span class="text-sm font-medium text-[#3d2a1c]">{ label }</span>
+		<input
+			type="password"
+			name={ name }
+			placeholder={ placeholder }
+			class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all duration-200 placeholder:text-[#9a8770] text-[#2b1d12]"
+		/>
+	</label>
+}

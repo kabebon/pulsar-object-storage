@@ -1,0 +1,314 @@
+package pages
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+
+	"pulsar/internal/models"
+	"pulsar/web/views/layouts"
+)
+
+// BucketRow is the list-view model for a bucket.
+type BucketRow struct {
+	ID          string
+	Name        string
+	Region      string
+	Visibility  string
+	CDNEnabled  bool
+	ObjectCount int64
+	TotalSize   int64
+	CreatedAt   string
+}
+
+templ BucketsPage(props layouts.LayoutProps, buckets []BucketRow, maxBuckets int) {
+	@AppLayout(props) {
+		<div class="flex items-center justify-between">
+			<div>
+				<h1 class="font-pixel text-2xl text-[#2b1d12]">Папки</h1>
+				<p class="mt-1.5 text-sm text-[#6b5440]">Создано { len(buckets) } из { formatLimit(maxBuckets) } доступных.</p>
+			</div>
+			<button
+				class="inline-flex items-center gap-2 px-4 py-2.5 font-pixel text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[5px_5px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200"
+				hx-get="/app/buckets/new"
+				hx-target="#modal"
+				hx-swap="innerHTML"
+			>
+				<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+				Создать папку
+			</button>
+		</div>
+		<div id="modal"></div>
+		<div class="mt-6 border-2 border-[#2b1d12] overflow-hidden bg-[#fffaf2] shadow-[5px_5px_0_0_#2b1d12]">
+			if len(buckets) == 0 {
+				<div class="p-16 text-center">
+					<div class="inline-flex items-center justify-center w-14 h-14 bg-[#f0e6d6] border-2 border-[#2b1d12] text-[#9a8770] mb-4">
+						<svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+					</div>
+				<p class="text-[#3d2a1c] font-medium">Папок пока нет</p>
+				<p class="mt-1 text-sm text-[#9a8770]">Создайте первую, чтобы начать загружать файлы.</p>
+				</div>
+			} else {
+				<table class="w-full text-sm">
+					<thead class="text-[#6b5440] text-left border-b-2 border-[#e3d7c4] bg-[#f7f0e4]">
+						<tr>
+							<th class="px-5 py-3.5 font-medium">Имя</th>
+							<th class="px-5 py-3.5 font-medium">Регион</th>
+							<th class="px-5 py-3.5 font-medium">Доступ</th>
+							<th class="px-5 py-3.5 font-medium text-right">Объектов</th>
+							<th class="px-5 py-3.5 font-medium text-right">Размер</th>
+							<th class="px-5 py-3.5 font-medium">Создан</th>
+							<th class="px-5 py-3.5"></th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-[#e3d7c4]">
+						for _, b := range buckets {
+							<tr class="group hover:bg-[#fbf3e7] transition-colors duration-150">
+								<td class="px-5 py-4">
+									<a href={ "/app/buckets/" + b.ID } class="inline-flex items-center gap-2 text-[#b06a2c] hover:text-[#8f511e] font-medium transition-colors">
+										<svg class="w-4 h-4 text-[#9a8770] group-hover:text-[#b06a2c] transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+										{ b.Name }
+									</a>
+								</td>
+								<td class="px-5 py-4 text-[#6b5440] font-mono text-xs">{ b.Region }</td>
+								<td class="px-5 py-4">
+									if b.Visibility == "public" {
+										<span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#dde7d5] border border-[#3f6b35] text-[#2f5227]">
+											<span class="w-1.5 h-1.5 bg-[#3f6b35]"></span>public
+										</span>
+									} else {
+										<span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#f0e6d6] border border-[#9a8770] text-[#3d2a1c]">
+											<span class="w-1.5 h-1.5 bg-[#9a8770]"></span>private
+										</span>
+									}
+								</td>
+								<td class="px-5 py-4 text-right text-[#3d2a1c] tabular-nums">{ formatInt(b.ObjectCount) }</td>
+								<td class="px-5 py-4 text-right text-[#3d2a1c] tabular-nums">{ formatBytes(b.TotalSize) }</td>
+								<td class="px-5 py-4 text-[#9a8770] text-xs">{ b.CreatedAt }</td>
+								<td class="px-5 py-4 text-right">
+									<button
+										class="text-[#a23b29] hover:text-[#7a2b1c] text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+										hx-delete={ "/app/buckets/" + b.ID }
+										hx-confirm="Удалить бакет и все объекты внутри?"
+										hx-target="closest tr"
+										hx-swap="outerHTML"
+									>Удалить</button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</div>
+	}
+}
+
+// ObjectRow is the list-view model for an object.
+type ObjectRow struct {
+	Key         string
+	Size        int64
+	ContentType string
+	UploadedAt  string
+}
+
+templ BucketDetail(props layouts.LayoutProps, bucket *models.Bucket, objects []ObjectRow) {
+	@AppLayout(props) {
+		<div class="flex items-center justify-between">
+			<div>
+				<a href="/app/buckets" class="inline-flex items-center gap-1.5 text-sm text-[#6b5440] hover:text-[#b06a2c] transition-colors">
+					<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m6-7-7 7 7 7"/></svg>
+					Все бакеты
+				</a>
+				<h1 class="mt-2 font-pixel text-2xl text-[#2b1d12] flex items-center gap-3">
+				{ bucket.Name }
+				if bucket.Visibility == "public" {
+					<span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#dde7d5] border border-[#3f6b35] text-[#2f5227]">
+						<span class="w-1.5 h-1.5 bg-[#3f6b35]"></span>публичная
+					</span>
+				} else {
+					<span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#f0e6d6] border border-[#9a8770] text-[#3d2a1c]">приватная</span>
+				}
+			</h1>
+				<p class="mt-1.5 text-sm text-[#6b5440]">Регион <span class="font-mono text-[#3d2a1c]">{ bucket.Region }</span></p>
+			</div>
+		</div>
+
+		<!-- Upload dropzone -->
+		<div class="mt-6">
+			<div id="dropzone" data-bucket-id={ bucket.ID.String() } class="dropzone group">
+				<div class="inline-flex items-center justify-center w-12 h-12 bg-[#b06a2c] border-2 border-[#2b1d12] text-[#fffaf2] mb-3 group-hover:scale-110 transition-all duration-300">
+					<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+				</div>
+				<p class="text-[#2b1d12] font-medium">Перетащите файлы сюда или <span class="text-[#b06a2c]">выберите</span></p>
+				<input id="file-input" type="file" multiple class="hidden"/>
+				<p class="mt-2 text-xs text-[#9a8770]">Загрузка идёт напрямую в хранилище по presigned-ссылкам</p>
+				<div id="upload-progress" class="mt-4 space-y-1.5 text-left text-xs max-w-md mx-auto"></div>
+			</div>
+		</div>
+
+			<!-- Object list -->
+			<div class="mt-6 border-2 border-[#2b1d12] overflow-hidden bg-[#fffaf2] shadow-[5px_5px_0_0_#2b1d12]">
+				<table class="w-full text-sm">
+					<thead class="text-[#6b5440] text-left border-b-2 border-[#e3d7c4] bg-[#f7f0e4]">
+						<tr>
+							<th class="px-5 py-3.5 font-medium">Ключ</th>
+							<th class="px-5 py-3.5 font-medium">Тип</th>
+							<th class="px-5 py-3.5 font-medium text-right">Размер</th>
+							<th class="px-5 py-3.5 font-medium">Загружен</th>
+							<th class="px-5 py-3.5"></th>
+						</tr>
+					</thead>
+					<tbody id="object-list" class="divide-y divide-[#e3d7c4]">
+						if len(objects) == 0 {
+							<tr><td colspan="5" class="px-5 py-12 text-center text-[#9a8770]">Объектов пока нет. Загрузите первый файл выше.</td></tr>
+						} else {
+							for _, o := range objects {
+								@objectRow(bucket.ID, o)
+							}
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	}
+
+templ objectRow(bucketID uuid.UUID, o ObjectRow) {
+	<tr class="group hover:bg-[#fbf3e7] transition-colors duration-150">
+		<td class="px-5 py-3.5 font-mono text-xs text-[#2b1d12] break-all max-w-md">{ o.Key }</td>
+		<td class="px-5 py-3.5 text-[#6b5440] text-xs">{ shortType(o.ContentType) }</td>
+		<td class="px-5 py-3.5 text-right text-[#3d2a1c] tabular-nums">{ formatBytes(o.Size) }</td>
+		<td class="px-5 py-3.5 text-[#9a8770] text-xs">{ o.UploadedAt }</td>
+		<td class="px-5 py-3.5 text-right">
+			<div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+				<a
+					href={ fmt.Sprintf("/app/buckets/%s/objects/%s/download", bucketID.String(), urlEncodeKey(o.Key)) }
+					download=""
+					class="text-[#b06a2c] hover:text-[#8f511e] text-xs font-medium"
+				>Скачать</a>
+				<button
+					class="text-[#a23b29] hover:text-[#7a2b1c] text-xs font-medium"
+					hx-delete={ fmt.Sprintf("/app/buckets/%s/objects/%s", bucketID.String(), urlEncodeKey(o.Key)) }
+					hx-confirm="Удалить объект?"
+					hx-target="closest tr"
+					hx-swap="outerHTML"
+				>Удалить</button>
+			</div>
+		</td>
+	</tr>
+}
+
+// NewBucketForm is rendered into the modal via htmx.
+templ NewBucketForm(props layouts.LayoutProps) {
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-[#2b1d12]/60 animate-fade-in" _="on click if target == me remove me">
+		<div class="w-full max-w-md mx-4 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[8px_8px_0_0_#2b1d12] p-6 animate-fade-in-up">
+			<div class="flex items-center justify-between mb-5">
+				<h3 class="font-pixel text-lg text-[#2b1d12]">Новая папка</h3>
+				<button type="button" class="text-[#9a8770] hover:text-[#2b1d12] transition-colors" _="on click remove closest <div.fixed.inset-0>">
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+				</button>
+			</div>
+			<form class="space-y-4" hx-post="/app/buckets" hx-on::after-request="if event.detail.xhr.status == 200 then window.location.reload()">
+				<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+				<label class="block">
+					<span class="text-sm font-medium text-[#3d2a1c]">Имя</span>
+					<input type="text" name="name" required pattern="[a-z0-9.\-]{3,63}" placeholder="my-bucket" autofocus
+						class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all font-mono text-[#2b1d12]"/>
+					<span class="block mt-1.5 text-xs text-[#9a8770]">3-63 символа: a-z, 0-9, дефис, точка</span>
+				</label>
+				<label class="block">
+					<span class="text-sm font-medium text-[#3d2a1c]">Регион</span>
+					<select name="region" class="mt-1.5 w-full px-3.5 py-2.5 bg-[#fffaf2] border-2 border-[#9a8770] focus:border-[#b06a2c] focus:ring-2 focus:ring-[#b06a2c]/30 outline-none transition-all text-[#2b1d12]">
+						<option value="us-east-1">us-east-1</option>
+						<option value="eu-west-1">eu-west-1</option>
+						<option value="ap-southeast-1">ap-southeast-1</option>
+					</select>
+				</label>
+				<label class="flex items-center gap-2.5 text-sm text-[#3d2a1c] cursor-pointer select-none">
+				<input type="checkbox" name="visibility" value="public" class="w-4 h-4 accent-[#b06a2c]"/>
+				<span>Публичный доступ (для шаринга ссылками)</span>
+			</label>
+				<div class="flex gap-2 justify-end pt-2">
+					<button type="button" class="px-4 py-2.5 text-[#3d2a1c] hover:bg-[#f0e6d6] border-2 border-transparent transition-colors" _="on click remove closest <div.fixed.inset-0>">Отмена</button>
+					<button type="submit" class="px-5 py-2.5 font-pixel text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] hover:shadow-[4px_4px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Создать</button>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+// --- formatting helpers ---
+
+func shortType(ct string) string {
+	if ct == "" {
+		return "—"
+	}
+	if i := strings.IndexByte(ct, ';'); i > 0 {
+		ct = ct[:i]
+	}
+	if i := strings.IndexByte(ct, '/'); i > 0 {
+		return ct[i+1:]
+	}
+	return ct
+}
+
+func formatLimit(n int) string {
+	if n <= 0 {
+		return "∞"
+	}
+	return formatInt(int64(n))
+}
+
+func formatInt(n int64) string {
+	if n == 0 {
+		return "0"
+	}
+	var b [20]byte
+	i := len(b)
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	for n > 0 {
+		i--
+		b[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		b[i] = '-'
+	}
+	return string(b[i:])
+}
+
+// formatBytes renders a human-readable size.
+func formatBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return formatInt(n) + " B"
+	}
+	div, exp := int64(unit), 0
+	for n2 := n / unit; n2 >= unit; n2 /= unit {
+		div *= unit
+		exp++
+	}
+	suffix := "KMGTPE"
+	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), suffix[exp])
+}
+
+// urlEncodeKey percent-encodes the object key for safe embedding in a URL.
+func urlEncodeKey(key string) string {
+	var b strings.Builder
+	for _, r := range key {
+		switch {
+		case r == '/' || r == '-' || r == '_' || r == '.' || r == '~' ||
+			(r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+		default:
+			for _, c := range []byte(string(r)) {
+				fmt.Fprintf(&b, "%%%02X", c)
+			}
+		}
+	}
+	return b.String()
+}

@@ -1,0 +1,122 @@
+package pages
+
+import "pulsar/web/views/layouts"
+
+templ Home(props layouts.LayoutProps) {
+	@layouts.PublicLayout(props) {
+		<!-- Hero -->
+		<section class="relative overflow-hidden">
+			<!-- Decorative pixel cloud sprites (flat blocks, sharp corners) -->
+			<div class="blob w-96 h-96 bg-[#fffaf2] top-[-10%] left-[-5%] border-2 border-[#e3d7c4]"></div>
+			<div class="blob w-80 h-80 bg-[#fffaf2] top-[10%] right-[5%] border-2 border-[#e3d7c4]" style="animation-delay: -6s"></div>
+
+			<div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-36">
+				<div class="max-w-3xl animate-fade-in-up">
+					<span class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#fffaf2] border-2 border-[#2b1d12] text-[10px] font-pixel text-[#b06a2c] shadow-[3px_3px_0_0_#2b1d12]">
+						<span class="w-1.5 h-1.5 bg-[#b06a2c] animate-pulse"></span>
+						Облачное хранилище · Шаринг · REST API
+					</span>
+					<h1 class="mt-6 font-display text-5xl sm:text-7xl text-[#2b1d12] tracking-tight leading-[1.05]">
+						Ваши файлы,
+						<br/>
+						<span class="text-[#b06a2c]">всегда под рукой</span>
+					</h1>
+					<p class="mt-7 text-lg sm:text-xl text-[#4f3a28] max-w-2xl leading-relaxed">
+						Загружайте, храните и делитесь файлами. Прямые ссылки, контроль доступа и REST API для автоматизации — без настройки серверов.
+					</p>
+					<div class="mt-9 flex flex-wrap gap-3">
+						<a href="/register" class="group relative inline-flex items-center gap-2 px-7 py-3.5 font-pixel text-lg text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[5px_5px_0_0_#2b1d12] hover:shadow-[6px_6px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">
+							Создать аккаунт
+							<svg class="w-4 h-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+						</a>
+						<a href="/pricing" class="inline-flex items-center gap-2 px-7 py-3.5 font-pixel text-lg text-[#2b1d12] bg-[#fffaf2] border-2 border-[#2b1d12] shadow-[5px_5px_0_0_#2b1d12] hover:shadow-[6px_6px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">
+							Смотреть тарифы
+						</a>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Features -->
+		<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+			<div class="max-w-2xl mb-14">
+				<span class="text-[10px] font-pixel uppercase tracking-widest text-[#b06a2c]">Возможности</span>
+				<h2 class="mt-3 font-display text-3xl sm:text-4xl text-[#2b1d12] tracking-tight">Всё для удобной работы с файлами</h2>
+				<p class="mt-3 text-[#6b5440]">От drag-and-drop загрузки до шаринга ссылками и API-доступа — без настройки серверов.</p>
+			</div>
+			<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger">
+			@feature("Облачное хранилище", "Загружайте файлы до 5 ГБ каждый. Структура папок и мгновенный поиск.", "cloud")
+			@feature("Шаринг ссылками", "Делитесь файлами и папками по прямой ссылке. Публичный или приватный доступ.", "share")
+			@feature("Загрузка напрямую", "Файлы идут в хранилище в обход сервера — без нагрузки на приложение.", "upload")
+			@feature("Контрольные суммы", "ETag для каждого файла — проверка целостности при скачивании.", "shield")
+			@feature("Доступ по API", "REST API и API-ключи для интеграций, бэкапов и автоматизации.", "key")
+			@feature("Журнал действий", "Аудит всех операций: загрузки, удаления, входы в аккаунт.", "history")
+			</div>
+		</section>
+
+		<!-- Stats -->
+		<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+			<div class="border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[6px_6px_0_0_#2b1d12] p-10 sm:p-14">
+				<div class="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+					@stat("99.9%", "Аптайм SLA")
+					@stat("∞", "Файлов в аккаунте")
+					@stat("5 ГБ", "Макс. размер файла")
+					@stat("TLS", "Шифрование канала")
+				</div>
+			</div>
+		</section>
+
+		<!-- CTA -->
+		<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+			<div class="relative overflow-hidden border-2 border-[#2b1d12] bg-[#b06a2c] shadow-[6px_6px_0_0_#2b1d12] p-10 sm:p-16 text-center">
+				<div class="blob w-72 h-72 bg-[#fffaf2] top-[-20%] left-1/2 -translate-x-1/2 opacity-20"></div>
+				<div class="relative">
+					<h2 class="font-pixel text-3xl sm:text-4xl text-[#fffaf2] tracking-tight">Начните бесплатно</h2>
+					<p class="mt-3 text-[#fffaf2] max-w-xl mx-auto">5 ГБ хранилища и 50 ГБ исходящего трафика в месяц. Без банковской карты.</p>
+					<a href="/register" class="mt-8 inline-flex items-center gap-2 px-8 py-4 font-pixel text-lg text-[#2b1d12] bg-[#fffaf2] border-2 border-[#2b1d12] shadow-[5px_5px_0_0_#2b1d12] hover:shadow-[6px_6px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">
+						Создать аккаунт
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+					</a>
+				</div>
+			</div>
+		</section>
+	}
+}
+
+templ feature(title, desc, icon string) {
+	<div class="group relative p-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12] hover:shadow-[6px_6px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+		<div class="relative">
+			<div class="inline-flex items-center justify-center w-11 h-11 bg-[#b06a2c] border-2 border-[#2b1d12] text-[#fffaf2] group-hover:scale-110 transition-all duration-300">
+				@featureIcon(icon)
+			</div>
+			<h3 class="mt-4 font-display text-xl text-[#2b1d12]">{ title }</h3>
+			<p class="mt-2 text-sm text-[#6b5440] leading-relaxed">{ desc }</p>
+		</div>
+	</div>
+}
+
+templ featureIcon(name string) {
+	switch name {
+	case "cloud":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.5 1.5A4 4 0 0 0 6.5 19Z"/></svg>
+	case "share":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.59 13.51 6.83 3.98M15.41 6.51 8.59 10.49"/></svg>
+	case "upload":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+	case "shield":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+	case "history":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>
+	case "key":
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.5 12.5 8-8M16 4l3 3-3 3"/></svg>
+	default:
+		<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>
+	}
+}
+
+templ stat(value, label string) {
+	<div class="group">
+		<div class="font-pixel text-4xl sm:text-5xl text-[#b06a2c]">{ value }</div>
+		<div class="mt-2 text-sm text-[#6b5440]">{ label }</div>
+	</div>
+}

@@ -1,0 +1,146 @@
+# Pulsar — local & production-ish docker-compose.
+# Bring the whole stack up with: docker compose up -d
+#
+# Services:
+#   pulsar    application
+#   postgres  relational store
+#   redis     sessions, rate-limit, cache
+#   minio     S3-compatible object storage (+ console)
+#   mailpit   SMTP catch-all + web UI on :8025
+#   caddy     reverse proxy with automatic HTTPS in front of the app
+
+name: pulsar
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulsar
+      POSTGRES_PASSWORD: pulsar
+      POSTGRES_DB: pulsar
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsar -d pulsar"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: pulsar
+      MINIO_ROOT_PASSWORD: pulsar12345
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Web console
+
+  # Provision the default bucket once MinIO is up.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 pulsar pulsar12345 &&
+      mc mb --ignore-existing local/pulsar &&
+      mc anonymous set download local/pulsar || true
+      "
+
+  mailpit:
+    image: axllent/mailpit:latest
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+
+  pulsar:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: postgres://pulsar:pulsar@postgres:5432/pulsar?sslmode=disable
+      REDIS_ADDR: redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL_PREFIX: http://localhost:9000/pulsar
+      S3_ACCESS_KEY: pulsar
+      S3_SECRET_KEY: pulsar12345
+      S3_BUCKET: pulsar
+      S3_REGION: us-east-1
+      S3_USE_PATH_STYLE: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_FROM: "Pulsar <no-reply@pulsar.local>"
+      MIGRATIONS_DIR: /migrations
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
+      SESSION_COOKIE_SECURE: "false"
+      CSRF_SECURE: "false"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_MONTHLY_PRO: ${STRIPE_PRICE_MONTHLY_PRO:-}
+      STRIPE_PRICE_YEARLY_PRO: ${STRIPE_PRICE_YEARLY_PRO:-}
+      STRIPE_PRICE_MONTHLY_BUSINESS: ${STRIPE_PRICE_MONTHLY_BUSINESS:-}
+      STRIPE_PRICE_YEARLY_BUSINESS: ${STRIPE_PRICE_YEARLY_BUSINESS:-}
+      CDN_DEFAULT_DOMAIN: ${CDN_DEFAULT_DOMAIN:-cdn.localhost}
+    ports:
+      - "8080:8080"
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["prod"]   # opt-in: docker compose --profile prod up
+    depends_on:
+      - pulsar
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  caddydata:
+  caddyconfig:
