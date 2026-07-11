@@ -501,6 +501,24 @@ make templates
 | `STRIPE_PRICE_MONTHLY_BUSINESS` | (пусто) | Price ID для Business (месяц) |
 | `STRIPE_PRICE_YEARLY_BUSINESS` | (пусто) | Price ID для Business (год) |
 
+#### ЮKassa (биллинг — карты РФ, СБП, ЮМоней)
+
+| Переменная | По умолчанию | Описание |
+|-----------|--------------|----------|
+| `YOOKASSA_SHOP_ID` | (пусто) | ID магазина. Пусто = no-provider mode |
+| `YOOKASSA_SECRET_KEY` | (пусто) | Секретный ключ в личном кабинете ЮKassa |
+
+> Webhook URL: `POST /webhooks/yookassa` — зарегистрируйте в личном кабинете ЮKassa: Интеграции → Настройка webhook. IP-адреса верифицируются автоматически по whitelist.
+
+#### CryptoBot / Crypto Pay (Telegram крипто-платежи)
+
+| Переменная | По умолчанию | Описание |
+|-----------|--------------|----------|
+| `CRYPTOBOT_TOKEN` | (пусто) | API-токен из @CryptoBot. Пусто = no-provider mode |
+| `CRYPTOBOT_NETWORK` | `mainnet` | `mainnet` (pay.crypt.bot) или `testnet` |
+
+> Webhook URL: `POST /webhooks/cryptobot` — зарегистрируйте в @CryptoBot: My Apps → [Ваше приложение] → Webhooks.
+
 #### CDN
 
 | Переменная | По умолчанию | Описание |
@@ -508,9 +526,9 @@ make templates
 | `CDN_DEFAULT_DOMAIN` | `cdn.localhost` | CNAME-target для кастомных доменов |
 | `CDN_SIGN_KEY` | `change-me-...` | HMAC-ключ для подписи CDN URL |
 
-### No-provider mode (Stripe)
+### No-provider mode
 
-Если `STRIPE_SECRET_KEY` пуст — биллинг работает в **демо-режиме**: страница тарифов отображается, квоты считаются, но Stripe Checkout и Customer Portal отключены. Это позволяет разрабатывать и тестировать без Stripe-аккаунта.
+Каждый платёжный провайдер независимо работает в **демо-режиме** при пустых ключах: страница тарифов отображается, квоты считаются, но кнопки оплаты скрыты.
 
 ---
 
@@ -542,7 +560,7 @@ pulsar/
 │   │   ├── web/               # Веб-страницы (htmx, templ-рендеринг)
 │   │   └── api/               # REST API v1 (JSON, RFC 9457 ошибки)
 │   ├── service/               # Бизнес-логика: auth, storage, api-keys
-│   ├── billing/               # Stripe: Checkout, Portal, webhooks
+│   ├── billing/               # Платёжные провайдеры: Stripe, ЮKassa, CryptoBot
 │   ├── domain/                # DNS-верификация кастомных доменов
 │   ├── repository/            # SQL-запросы (pgx), управление миграциями
 │   ├── storage/s3/            # S3-адаптер: presigned URLs, CRUD объектов
@@ -602,11 +620,11 @@ plans                    # Тарифные планы (free, pro, business)
 
 ### Тарифные планы (засеиваются при первой миграции)
 
-| План | Хранилище | Трафик/мес | Бакетов | Цена/мес |
-|------|-----------|-----------|---------|----------|
-| **Free** | 5 ГБ | 50 ГБ | 3 | $0 |
-| **Pro** | 100 ГБ | 1 ТБ | 50 | $99 |
-| **Business** | 1 ТБ | 10 ТБ | ∞ | $499 |
+| План | Хранилище | Бакетов | Цена/мес |
+|------|-----------|---------|----------|
+| **Free** | 5 ГБ | 3 | $0 |
+| **Pro** | 100 ГБ | 50 | $99 |
+| **Business** | 1 ТБ | ∞ | $499 |
 
 ---
 
@@ -624,90 +642,6 @@ go test -cover ./internal/service/ ./internal/domain/ ./internal/cache/
 ```
 
 Покрытие сфокусировано на критичных путях: хеширование паролей, валидация бакетов/доменов, генерация токенов, кодирование сессий.
-
----
-
-## 📤 Публикация на GitHub
-
-### Шаг 1. Создать репозиторий на GitHub
-
-**Вариант А — через GitHub CLI:**
-```bash
-# Установить gh: https://cli.github.com/
-gh repo create pulsar --private --source=. --push
-# Готово! Репозиторий создан и код запушен.
-```
-
-**Вариант Б — вручную через github.com:**
-1. Зайдите на https://github.com/new
-2. Введите имя репозитория (например, `pulsar`)
-3. Выберите **Private**
-4. **НЕ** ставьте галочки «Add README», «Add .gitignore» — у нас уже всё есть
-5. Нажмите **Create repository**
-
-### Шаг 2. Инициализировать Git (если ещё не инициализирован)
-
-```bash
-cd pulsar
-
-# Инициализация
-git init
-git branch -M main
-```
-
-### Шаг 3. Добавить удалённый репозиторий
-
-```bash
-# HTTPS (рекомендуется для начала):
-git remote add origin https://github.com/<ваш-username>/pulsar.git
-
-# Или SSH (если настроен SSH-ключ):
-git remote add origin git@github.com:<ваш-username>/pulsar.git
-```
-
-### Шаг 4. Первый коммит и push
-
-```bash
-# Добавить все файлы
-git add .
-
-# Проверить, что .env НЕ в списке (должен быть в .gitignore)
-git status
-
-# Создать коммит
-git commit -m "Initial commit: Pulsar cloud storage platform"
-
-# Запушить
-git push -u origin main
-```
-
-### Шаг 5. Проверить
-
-Откройте `https://github.com/<ваш-username>/pulsar` — все файлы проекта должны быть там.
-
-### Что НЕ попадёт в репозиторий
-
-Уже настроено в `.gitignore`:
-
-| Файл/папка | Причина |
-|------------|---------|
-| `.env`, `.env.local` | Секреты (пароли, ключи API) |
-| `/bin/` | Скомпилированные бинарники |
-| `*.exe`, `*.dll`, `*.so` | Бинарные файлы |
-| `/data/`, `/pgdata/` | Локальные Docker-тома |
-| `.idea/`, `.vscode/` | Настройки IDE |
-| `coverage.*` | Артефакты тестов |
-
-> ⚠️ **Важно!** Перед первым push убедитесь, что файл `.env` **не попал** в git:
-> ```bash
-> git status          # .env не должен быть в списке
-> git ls-files .env   # должно быть пусто
-> ```
-> Если `.env` уже был закоммичен ранее, удалите из отслеживания:
-> ```bash
-> git rm --cached .env
-> git commit -m "Remove .env from tracking"
-> ```
 
 ---
 
@@ -732,10 +666,11 @@ Caddy автоматически получит TLS-сертификат от Le
 - [ ] `CDN_SIGN_KEY` — сгенерировать: `openssl rand -hex 32`
 - [ ] `SESSION_COOKIE_SECURE=true`
 - [ ] `CSRF_SECURE=true`
-- [ ] `STRIPE_SECRET_KEY` и `STRIPE_WEBHOOK_SECRET` — live mode ключи
+- [ ] **Stripe**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` — live mode ключи; webhook `POST /webhooks/stripe`
+- [ ] **ЮKassa**: `YOOKASSA_SHOP_ID`, `YOOKASSA_SECRET_KEY`; webhook `POST /webhooks/yookassa`
+- [ ] **CryptoBot**: `CRYPTOBOT_TOKEN`; webhook `POST /webhooks/cryptobot`
 - [ ] Реальный SMTP-сервер + изменить TLS-политику в `mailer.go`
 - [ ] Бакет S3 с versioning + lifecycle policies
-- [ ] Внешний CDN (Cloudflare / CloudFront)
 - [ ] Бэкапы PostgreSQL (pg_dump + WAL archiving)
 - [ ] Мониторинг: Prometheus scrape `/metrics`
 - [ ] Настроить `TRUSTED_PROXIES` если за балансировщиком
