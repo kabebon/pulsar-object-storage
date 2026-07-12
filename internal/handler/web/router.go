@@ -38,7 +38,7 @@ func NewRouter(
 	// Public pages (landing, pricing, auth, static).
 	authH := NewAuthHandler(cfg, auth)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		Render(w, r, 0, pages.Home(baseProps(cfg, r, "Pulsar — облачное хранилище с CDN", "S3-совместимое хранилище с мгновенной доставкой через CDN.", "home")))
+		Render(w, r, 0, pages.Home(baseProps(cfg, r, "Pulsar — облачное хранилище", "S3-совместимое объектное хранилище с удобным веб-кабинетом и REST API.", "home")))
 	})
 	r.Get("/pricing", func(w http.ResponseWriter, r *http.Request) {
 		Render(w, r, 0, pages.Pricing(baseProps(cfg, r, "Тарифы", "Простые честные тарифы без скрытых лимитов.", "pricing"), defaultPlans()))
