@@ -401,6 +401,7 @@ SMTP_FROM=Pulsar <no-reply@yourdomain.com>
 - [ ] Включить `SESSION_COOKIE_SECURE=true` и `CSRF_SECURE=true` за HTTPS
 - [ ] Добавить GitHub Actions для CI/CD (тесты, линтинг, сборка Docker-образа)
 - [ ] Подключить live exchange rate API для криптовалютных платежей (CryptoBot)
+- [ ] Дополнить  документацию
 
 ---
 
