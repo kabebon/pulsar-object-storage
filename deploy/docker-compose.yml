@@ -101,34 +101,20 @@ services:
     env_file:
       - ../.env
     environment:
-      APP_ENV: ${APP_ENV:-local}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      # These MUST be overridden here because they use Docker service hostnames,
+      # not the values from .env (which point to localhost for local dev).
       HTTP_ADDR: ":8080"
       DATABASE_URL: postgres://pulsar:pulsar@postgres:5432/pulsar?sslmode=disable
       REDIS_ADDR: redis:6379
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL_PREFIX: http://localhost:9000/pulsar
       S3_ACCESS_KEY: pulsar
       S3_SECRET_KEY: pulsar12345
       S3_BUCKET: pulsar
       S3_REGION: us-east-1
       S3_USE_PATH_STYLE: "true"
       MIGRATIONS_DIR: /migrations
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
-      CSRF_SECURE: ${CSRF_SECURE:-false}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_PRICE_MONTHLY_PRO: ${STRIPE_PRICE_MONTHLY_PRO:-}
-      STRIPE_PRICE_YEARLY_PRO: ${STRIPE_PRICE_YEARLY_PRO:-}
-      STRIPE_PRICE_MONTHLY_BUSINESS: ${STRIPE_PRICE_MONTHLY_BUSINESS:-}
-      STRIPE_PRICE_YEARLY_BUSINESS: ${STRIPE_PRICE_YEARLY_BUSINESS:-}
-      CDN_DEFAULT_DOMAIN: ${CDN_DEFAULT_DOMAIN:-cdn.localhost}
-      CDN_SIGN_KEY: ${CDN_SIGN_KEY:-change-me-cdn-signKey}
-      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
-      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
-      CRYPTOBOT_TOKEN: ${CRYPTOBOT_TOKEN:-}
-      CRYPTOBOT_NETWORK: ${CRYPTOBOT_NETWORK:-mainnet}
+      # Everything else (APP_ENV, PUBLIC_BASE_URL, JWT_SECRET, SMTP_*, SESSION_*,
+      # CSRF_*, STRIPE_*, YOOKASSA_*, CRYPTOBOT_*, CDN_*) comes from env_file: ../.env
     ports:
       - "8080:8080"
 
