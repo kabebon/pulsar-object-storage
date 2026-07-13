@@ -14,6 +14,7 @@ name: pulsar
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: pulsar
       POSTGRES_PASSWORD: pulsar
@@ -30,6 +31,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
@@ -43,6 +45,7 @@ services:
 
   minio:
     image: minio/minio:latest
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: pulsar
@@ -73,6 +76,7 @@ services:
 
   mailpit:
     image: axllent/mailpit:latest
+    restart: unless-stopped
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
@@ -84,6 +88,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,8 +118,8 @@ services:
       SMTP_FROM: "Pulsar <no-reply@pulsar.local>"
       MIGRATIONS_DIR: /migrations
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
-      SESSION_COOKIE_SECURE: "false"
-      CSRF_SECURE: "false"
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      CSRF_SECURE: ${CSRF_SECURE:-false}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PRICE_MONTHLY_PRO: ${STRIPE_PRICE_MONTHLY_PRO:-}
@@ -128,6 +133,7 @@ services:
   caddy:
     image: caddy:2-alpine
     profiles: ["prod"]   # opt-in: docker compose --profile prod up
+    restart: unless-stopped
     depends_on:
       - pulsar
     ports:
@@ -137,6 +143,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
       - caddyconfig:/config
+    environment:
+      # Override domain via PULSAR_HOST in .env (root of repo)
+      PULSAR_HOST: ${PULSAR_HOST:-pulsar.my.id}
 
 volumes:
   pgdata:
