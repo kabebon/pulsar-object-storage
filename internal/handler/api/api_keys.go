@@ -10,6 +10,7 @@ import (
 	"pulsar/internal/models"
 	"pulsar/internal/repository"
 	"pulsar/internal/service"
+	"pulsar/internal/middleware"
 )
 
 // APIKeysHandler manages long-lived bearer tokens.
@@ -26,9 +27,9 @@ func NewAPIKeysHandler(keys *service.APIKeyService, repo *repository.APIKeysRepo
 // Routes registers /api-keys routes and returns the sub-router.
 func (h *APIKeysHandler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Get("/", h.list)
-	r.Post("/", h.create)
-	r.Delete("/{id}", h.delete)
+	r.With(middleware.RequireScope("api_keys:read")).Get("/", h.list)
+	r.With(middleware.RequireScope("api_keys:write")).Post("/", h.create)
+	r.With(middleware.RequireScope("api_keys:write")).Delete("/{id}", h.delete)
 	return r
 }
 

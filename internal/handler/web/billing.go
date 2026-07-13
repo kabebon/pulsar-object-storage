@@ -17,7 +17,6 @@ import (
 // BillingHandler serves the billing page and payment-provider checkout redirects.
 type BillingHandler struct {
 	cfg       *config.Config
-	billing   *billing.Service
 	yookassa  *billing.YooKassaService
 	cryptobot *billing.CryptoBotService
 	subs      *repository.SubscriptionsRepo
@@ -28,7 +27,6 @@ type BillingHandler struct {
 // NewBillingHandler wires dependencies.
 func NewBillingHandler(
 	cfg *config.Config,
-	b *billing.Service,
 	yk *billing.YooKassaService,
 	cb *billing.CryptoBotService,
 	subs *repository.SubscriptionsRepo,
@@ -37,7 +35,6 @@ func NewBillingHandler(
 ) *BillingHandler {
 	return &BillingHandler{
 		cfg:       cfg,
-		billing:   b,
 		yookassa:  yk,
 		cryptobot: cb,
 		subs:      subs,
@@ -49,9 +46,6 @@ func NewBillingHandler(
 // Routes registers billing routes (auth-protected).
 func (h *BillingHandler) Routes(r chi.Router) {
 	r.Get("/billing", h.show)
-	// Stripe
-	r.Post("/billing/subscribe", h.subscribe)
-	r.Get("/billing/portal", h.portal)
 	// YooKassa
 	r.Post("/billing/subscribe/yookassa", h.subscribeYooKassa)
 	// CryptoBot
@@ -69,48 +63,12 @@ func (h *BillingHandler) show(w http.ResponseWriter, r *http.Request) {
 	plans, _ := h.plans.All(r.Context())
 	viewPlans := toViewPlans(plans)
 	props := baseProps(h.cfg, r, "Тариф и оплата", "", "billing")
-	stripeEnabled := h.billing != nil && h.billing.Enabled()
+	stripeEnabled := false
 	ykEnabled := h.yookassa != nil && h.yookassa.Enabled()
 	cbEnabled := h.cryptobot != nil && h.cryptobot.Enabled()
 	Render(w, r, 0, pages.BillingPage(props, sub, usage, viewPlans, stripeEnabled, ykEnabled, cbEnabled))
 }
 
-// subscribe handles Stripe Checkout.
-func (h *BillingHandler) subscribe(w http.ResponseWriter, r *http.Request) {
-	uid := mustUserID(r)
-	plan := strings.TrimSpace(r.URL.Query().Get("plan"))
-	interval := strings.TrimSpace(r.URL.Query().Get("interval"))
-	if interval != "yearly" {
-		interval = "monthly"
-	}
-	if h.billing == nil || !h.billing.Enabled() {
-		http.Error(w, "billing не настроен", http.StatusServiceUnavailable)
-		return
-	}
-	success := h.cfg.HTTP.PublicBaseURL + "/app/billing?upgraded=1"
-	cancel := h.cfg.HTTP.PublicBaseURL + "/app/billing"
-	url, err := h.billing.CreateCheckoutURL(r.Context(), uid, plan, interval, success, cancel)
-	if err != nil {
-		http.Error(w, "не удалось создать сессию оплаты: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
-}
-
-// portal handles Stripe Billing Portal redirect.
-func (h *BillingHandler) portal(w http.ResponseWriter, r *http.Request) {
-	uid := mustUserID(r)
-	if h.billing == nil || !h.billing.Enabled() {
-		http.Error(w, "billing не настроен", http.StatusServiceUnavailable)
-		return
-	}
-	url, err := h.billing.CreatePortalURL(r.Context(), uid, h.cfg.HTTP.PublicBaseURL+"/app/billing")
-	if err != nil {
-		http.Error(w, "не удалось открыть портал: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
-}
 
 // subscribeYooKassa creates a YooKassa payment and redirects to the confirmation URL.
 func (h *BillingHandler) subscribeYooKassa(w http.ResponseWriter, r *http.Request) {

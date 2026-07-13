@@ -79,10 +79,10 @@ func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	switch m.port {
 	case 465, 2465:
 		opts = append(opts, gomail.WithSSL())
-	case 587, 2587:
-		opts = append(opts, gomail.WithTLSPolicy(gomail.TLSMandatory))
-	default:
+	case 1025, 1026:
 		opts = append(opts, gomail.WithTLSPolicy(gomail.NoTLS))
+	default:
+		opts = append(opts, gomail.WithTLSPolicy(gomail.TLSMandatory))
 	}
 
 	if m.user != "" || m.pass != "" {

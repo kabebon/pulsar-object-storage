@@ -230,6 +230,12 @@ func (c *Config) validate() error {
 	if c.S3.Bucket == "" {
 		errs = append(errs, "S3_BUCKET must be set")
 	}
+	if !c.Session.Secure && c.IsProduction() {
+		errs = append(errs, "SESSION_COOKIE_SECURE must be true in production")
+	}
+	if !c.CSRF.Secure && c.IsProduction() {
+		errs = append(errs, "CSRF_SECURE must be true in production")
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid config: %s", strings.Join(errs, "; "))
 	}

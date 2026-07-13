@@ -16,8 +16,8 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: pulsar
-      POSTGRES_PASSWORD: pulsar
+      POSTGRES_USER: ${POSTGRES_USER:-pulsar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe123!}
       POSTGRES_DB: pulsar
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -26,13 +26,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-ChangeMe123!}"]
     volumes:
       - redisdata:/data
     healthcheck:
@@ -40,16 +38,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    ports:
-      - "6379:6379"
 
   minio:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: pulsar
-      MINIO_ROOT_PASSWORD: pulsar12345
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeMe123!}
     volumes:
       - miniodata:/data
     healthcheck:
@@ -57,9 +53,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    ports:
-      - "9000:9000"  # S3 API
-      - "9001:9001"  # Web console
 
   # Provision the default bucket once MinIO is up.
   minio-init:
@@ -69,9 +62,8 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 pulsar pulsar12345 &&
-      mc mb --ignore-existing local/pulsar &&
-      mc anonymous set download local/pulsar || true
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-admin} $${MINIO_ROOT_PASSWORD:-ChangeMe123!} &&
+      mc mb --ignore-existing local/pulsar
       "
 
   mailpit:
@@ -80,9 +72,6 @@ services:
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
-    ports:
-      - "8025:8025"  # Web UI
-      - "1025:1025"  # SMTP
 
   pulsar:
     build:
@@ -104,11 +93,12 @@ services:
       # These MUST be overridden here because they use Docker service hostnames,
       # not the values from .env (which point to localhost for local dev).
       HTTP_ADDR: ":8080"
-      DATABASE_URL: postgres://pulsar:pulsar@postgres:5432/pulsar?sslmode=disable
+      DATABASE_URL: postgres://$${POSTGRES_USER:-pulsar}:$${POSTGRES_PASSWORD:-ChangeMe123!}@postgres:5432/pulsar?sslmode=disable
       REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: $${REDIS_PASSWORD:-ChangeMe123!}
       S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: pulsar
-      S3_SECRET_KEY: pulsar12345
+      S3_ACCESS_KEY: $${MINIO_ROOT_USER:-admin}
+      S3_SECRET_KEY: $${MINIO_ROOT_PASSWORD:-ChangeMe123!}
       S3_BUCKET: pulsar
       S3_REGION: us-east-1
       S3_USE_PATH_STYLE: "true"
@@ -116,7 +106,7 @@ services:
       # Everything else (APP_ENV, PUBLIC_BASE_URL, JWT_SECRET, SMTP_*, SESSION_*,
       # CSRF_*, STRIPE_*, YOOKASSA_*, CRYPTOBOT_*, CDN_*) comes from env_file: ../.env
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   caddy:
     image: caddy:2-alpine

@@ -63,20 +63,20 @@ func (s *APIKeyService) Create(ctx context.Context, userID uuid.UUID, name strin
 	return &CreateResult{ID: k.ID, Secret: secret, Prefix: prefix, Name: k.Name}, nil
 }
 
-// Resolve looks up a bearer token by hashing it and returns the owning user id.
+// Resolve looks up a bearer token by hashing it and returns the owning user id, name, and scopes.
 // It also touches last_used_at. Returns ErrNotFound on any miss.
-func (s *APIKeyService) Resolve(ctx context.Context, secret string) (uuid.UUID, string, error) {
+func (s *APIKeyService) Resolve(ctx context.Context, secret string) (uuid.UUID, string, []string, error) {
 	secret = strings.TrimSpace(secret)
 	if !strings.HasPrefix(secret, "pk_live_") {
-		return uuid.Nil, "", models.ErrNotFound
+		return uuid.Nil, "", nil, models.ErrNotFound
 	}
 	k, err := s.Keys.FindByHash(ctx, hashSecret(secret))
 	if err != nil {
-		return uuid.Nil, "", err
+		return uuid.Nil, "", nil, err
 	}
 	// Best-effort touch.
 	_ = s.Keys.TouchLastUsed(ctx, k.ID)
-	return k.UserID, k.Name, nil
+	return k.UserID, k.Name, k.Scopes, nil
 }
 
 // hashSecret returns the hex-encoded SHA-256 of the full secret.

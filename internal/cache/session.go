@@ -43,6 +43,9 @@ func (s *SessionStore) Create(ctx context.Context, data SessionData) (string, er
 	if err := s.c.Set(ctx, sessionKey(id), data, s.ttl); err != nil {
 		return "", err
 	}
+	setKey := s.c.key(userSessionsKey(data.UserID))
+	_ = s.c.rdb.SAdd(ctx, setKey, id)
+	_ = s.c.rdb.Expire(ctx, setKey, s.ttl)
 	return id, nil
 }
 

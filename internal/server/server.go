@@ -51,7 +51,7 @@ func New(deps Deps) (*Server, error) {
 	r := chi.NewRouter()
 
 	r.Use(chimw.RequestID)
-	r.Use(middleware.RealIP)
+	r.Use(middleware.RealIP(deps.Cfg.HTTP.TrustedProxies))
 	r.Use(middleware.Recover(deps.Logger))
 	r.Use(middleware.Logger(deps.Logger))
 	r.Use(middleware.Metrics)

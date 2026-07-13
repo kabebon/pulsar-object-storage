@@ -54,6 +54,10 @@ func NewRouter(
 				Post("/login", authH.submitLogin)
 			r.With(rateLimiter.RateLimit("/forgot-password", 5, "1m", middleware.LimitByEmail("email"))).
 				Post("/forgot-password", authH.submitForgot)
+		} else {
+			r.Post("/register", authH.submitRegister)
+			r.Post("/login", authH.submitLogin)
+			r.Post("/forgot-password", authH.submitForgot)
 		}
 		authH.Routes(r)
 	})

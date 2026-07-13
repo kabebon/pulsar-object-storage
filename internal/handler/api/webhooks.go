@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"io"
 	"net/http"
+	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 
@@ -13,55 +15,27 @@ import (
 // bypass CSRF (each provider signs requests itself) and read the raw body exactly
 // as received.
 //
-// Stripe  → POST /webhooks/stripe    (HMAC-SHA256 via Stripe-Signature header)
 // YooKassa→ POST /webhooks/yookassa  (IP whitelist verification)
 // CryptoBot→POST /webhooks/cryptobot (HMAC-SHA256 via Crypto-Pay-Api-Signature header)
 type WebhooksHandler struct {
-	billing    *billing.Service
 	yookassa   *billing.YooKassaService
 	cryptobot  *billing.CryptoBotService
 }
 
 // NewWebhooksHandler wires dependencies.
 func NewWebhooksHandler(
-	b *billing.Service,
 	yk *billing.YooKassaService,
 	cb *billing.CryptoBotService,
 ) *WebhooksHandler {
-	return &WebhooksHandler{billing: b, yookassa: yk, cryptobot: cb}
+	return &WebhooksHandler{yookassa: yk, cryptobot: cb}
 }
 
 // Routes registers webhook endpoints under /webhooks.
 func (h *WebhooksHandler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Post("/stripe", h.stripe)
 	r.Post("/yookassa", h.yookassa_)
 	r.Post("/cryptobot", h.cryptobot_)
 	return r
-}
-
-// stripe handles Stripe webhook events.
-func (h *WebhooksHandler) stripe(w http.ResponseWriter, r *http.Request) {
-	if h.billing == nil || !h.billing.Enabled() {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = w.Write([]byte(`{"error":"billing not configured"}`))
-		return
-	}
-	// Stripe requires the raw body for signature verification.
-	payload, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	sig := r.Header.Get("Stripe-Signature")
-	if err := h.billing.ApplyWebhook(r.Context(), payload, sig); err != nil {
-		// Return 400 so Stripe retries; log detail server-side.
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":"signature verification failed"}`))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"received":true}`))
 }
 
 // yookassa_ handles YooKassa webhook events.
@@ -74,6 +48,7 @@ func (h *WebhooksHandler) yookassa_(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -84,11 +59,16 @@ func (h *WebhooksHandler) yookassa_(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"received":true}`))
 
+	bgCtx := context.WithoutCancel(r.Context())
+	ip := r.RemoteAddr
+	if idx := strings.LastIndexByte(ip, ':'); idx > 0 {
+		ip = ip[:idx]
+	}
+
 	// Background processing — do NOT block the response.
 	go func() {
-		if err := h.yookassa.HandleWebhook(r.Context(), payload, r.RemoteAddr); err != nil {
-			// In production, replace with structured logging.
-			_ = err
+		if err := h.yookassa.HandleWebhook(bgCtx, payload, ip); err != nil {
+			slog.Error("yookassa webhook processing failed", "error", err)
 		}
 	}()
 }
@@ -102,6 +82,7 @@ func (h *WebhooksHandler) cryptobot_(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -110,6 +91,7 @@ func (h *WebhooksHandler) cryptobot_(w http.ResponseWriter, r *http.Request) {
 	sig := r.Header.Get("Crypto-Pay-Api-Signature")
 
 	if err := h.cryptobot.HandleWebhook(r.Context(), payload, sig); err != nil {
+		slog.Error("cryptobot webhook processing failed", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"error":"webhook processing failed"}`))
 		return

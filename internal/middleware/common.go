@@ -4,8 +4,10 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -23,6 +25,7 @@ const (
 	CtxPlanSlug  contextKey = "plan_slug"
 	CtxSessionID contextKey = "session_id"
 	CtxAuthVia   contextKey = "auth_via" // "session" | "apikey"
+	CtxScopes    contextKey = "scopes"
 )
 
 // RequestID exposes chi's request id under our own key + header for downstream logs.
@@ -81,9 +84,50 @@ func Recover(logger *slog.Logger) func(http.Handler) http.Handler {
 }
 
 // RealIP forwards the real client IP from X-Forwarded-For behind a proxy.
-// We delegate to chi's implementation.
-func RealIP(next http.Handler) http.Handler {
-	return middleware.RealIP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-	}))
+// It only trusts headers if the direct client IP is in the trusted proxies list.
+func RealIP(trusted []string) func(http.Handler) http.Handler {
+	var trustedNets []*net.IPNet
+	for _, t := range trusted {
+		if !strings.Contains(t, "/") {
+			if strings.Contains(t, ":") {
+				t = t + "/128"
+			} else {
+				t = t + "/32"
+			}
+		}
+		if _, n, err := net.ParseCIDR(t); err == nil {
+			trustedNets = append(trustedNets, n)
+		}
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			host, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				host = r.RemoteAddr
+			}
+			ip := net.ParseIP(host)
+
+			isTrusted := false
+			for _, n := range trustedNets {
+				if n.Contains(ip) {
+					isTrusted = true
+					break
+				}
+			}
+
+			if isTrusted {
+				if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+					r.RemoteAddr = xrip
+				} else if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+					i := strings.Index(xff, ",")
+					if i == -1 {
+						i = len(xff)
+					}
+					r.RemoteAddr = strings.TrimSpace(xff[:i])
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

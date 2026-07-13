@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,30 +22,9 @@ func NewAuditLogRepo(db *DB) *AuditLogRepo { return &AuditLogRepo{db: db} }
 func (r *AuditLogRepo) Record(ctx context.Context, userID *uuid.UUID, action models.AuditAction, ip, userAgent string, meta url.Values) error {
 	metaJSON := "{}"
 	if meta != nil && len(meta) > 0 {
-		// Encode url.Values into a JSON object {key:[values,...]} conservatively.
-		parts := make([]byte, 0, 64)
-		parts = append(parts, '{')
-		first := true
-		for k, vs := range meta {
-			if !first {
-				parts = append(parts, ',')
-			}
-			first = false
-			parts = append(parts, '"')
-			parts = append(parts, k...)
-			parts = append(parts, '"', ':', '[')
-			for i, v := range vs {
-				if i > 0 {
-					parts = append(parts, ',')
-				}
-				parts = append(parts, '"')
-				parts = append(parts, v...)
-				parts = append(parts, '"')
-			}
-			parts = append(parts, ']')
+		if b, err := json.Marshal(meta); err == nil {
+			metaJSON = string(b)
 		}
-		parts = append(parts, '}')
-		metaJSON = string(parts)
 	}
 	const q = `
         INSERT INTO audit_log (user_id, action, ip, user_agent, metadata)
@@ -106,60 +85,11 @@ func uuidToText(u *uuid.UUID) any {
 	return *u
 }
 
-// decodeMetadata parses the compact JSON {"k":["v",...]}} produced by Record
-// back into url.Values. Kept tolerant of shape variations.
+// decodeMetadata parses JSON back into url.Values.
 func decodeMetadata(b []byte) url.Values {
 	v := url.Values{}
-	s := string(b)
-	if len(s) < 2 {
-		return v
+	if len(b) > 0 {
+		_ = json.Unmarshal(b, &v)
 	}
-	// Minimal, defensive parser: walk top-level keys. Avoids pulling encoding/json.
-	i := 1
-	for i < len(s) {
-		if s[i] != '"' {
-			i++
-			continue
-		}
-		// read key
-		j := i + 1
-		for j < len(s) && s[j] != '"' {
-			j++
-		}
-		if j >= len(s) {
-			break
-		}
-		key := s[i+1 : j]
-		j++ // skip closing quote
-		for j < len(s) && (s[j] == ' ' || s[j] == ':') {
-			j++
-		}
-		if j >= len(s) || s[j] != '[' {
-			// single value fallback
-			i = j
-			continue
-		}
-		j++ // skip '['
-		// read values until ']'
-		for j < len(s) && s[j] != ']' {
-			if s[j] == '"' {
-				k := j + 1
-				for k < len(s) && s[k] != '"' {
-					k++
-				}
-				if k < len(s) {
-					v.Add(key, s[j+1:k])
-					j = k + 1
-				} else {
-					break
-				}
-			} else {
-				j++
-			}
-		}
-		i = j
-	}
-	// Keep encoding/json-free: ignore strconv import noise.
-	_ = strconv.Itoa
 	return v
 }

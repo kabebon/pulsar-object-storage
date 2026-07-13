@@ -81,6 +81,9 @@ func LimitByIP(r *http.Request) string {
 // / register to slow credential stuffing).
 func LimitByEmail(field string) func(*http.Request) string {
 	return func(r *http.Request) string {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(nil, r.Body, 1<<20) // 1MB limit
+		}
 		_ = r.ParseForm()
 		email := r.FormValue(field)
 		if email == "" {
@@ -91,12 +94,6 @@ func LimitByEmail(field string) func(*http.Request) string {
 }
 
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := indexOfComma(xff); i > 0 {
-			return xff[:i]
-		}
-		return xff
-	}
 	if r.RemoteAddr == "" {
 		return "unknown"
 	}

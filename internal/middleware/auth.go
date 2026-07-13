@@ -73,8 +73,8 @@ func RequireAuth(isAPI bool) func(http.Handler) http.Handler {
 }
 
 // APIKeyAuth authenticates REST API callers using a Bearer token resolved by
-// the provided resolver. On success it tags the request with user id + via.
-func APIKeyAuth(resolve func(ctx context.Context, token string) (userID, email string, err error)) func(http.Handler) http.Handler {
+// the provided resolver. On success it tags the request with user id + via + scopes.
+func APIKeyAuth(resolve func(ctx context.Context, token string) (userID, email string, scopes []string, err error)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// If already authenticated via session, allow pass-through.
@@ -87,7 +87,7 @@ func APIKeyAuth(resolve func(ctx context.Context, token string) (userID, email s
 				next.ServeHTTP(w, r)
 				return
 			}
-			uid, email, err := resolve(r.Context(), token)
+			uid, email, scopes, err := resolve(r.Context(), token)
 			if err != nil {
 				writeProblem(w, httperr.Unauthorized("Invalid API key"))
 				return
@@ -96,7 +96,36 @@ func APIKeyAuth(resolve func(ctx context.Context, token string) (userID, email s
 			ctx = context.WithValue(ctx, CtxUserID, uid)
 			ctx = context.WithValue(ctx, CtxEmail, email)
 			ctx = context.WithValue(ctx, CtxAuthVia, "apikey")
+			ctx = context.WithValue(ctx, CtxScopes, scopes)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireScope rejects API key requests that lack the required scope.
+// It allows session-authenticated requests (which have full access).
+func RequireScope(required string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			via, _ := r.Context().Value(CtxAuthVia).(string)
+			if via == "session" || via == "" {
+				// Sessions have full access; missing auth is caught by RequireAuth.
+				next.ServeHTTP(w, r)
+				return
+			}
+			scopes, _ := r.Context().Value(CtxScopes).([]string)
+			hasScope := false
+			for _, s := range scopes {
+				if s == "*" || s == required {
+					hasScope = true
+					break
+				}
+			}
+			if !hasScope {
+				writeProblem(w, httperr.Forbidden("Missing required scope: " + required))
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

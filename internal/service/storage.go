@@ -140,8 +140,33 @@ func (s *StorageService) ConfirmUpload(ctx context.Context, userID, bucketID uui
 	if err != nil {
 		return nil, err
 	}
-	_ = b
-	return s.Objects.Upsert(ctx, bucketID, key, contentType, etag, sha256, size, "STANDARD")
+
+	s3Key := s3store.BuildKey(userID.String(), b.Name, key)
+	meta, err := s.S3.Head(ctx, s3Key)
+	if err != nil {
+		return nil, repository.Wrap(models.ErrValidation, "object not found on S3")
+	}
+
+	// Quota check: storage must not exceed plan.
+	if s.PlanResolver != nil {
+		limits, err := s.PlanResolver(ctx, userID)
+		if err == nil && limits.StorageBytes > 0 {
+			current, err := s.Objects.TotalSizeByUser(ctx, userID)
+			if err != nil {
+				return nil, err
+			}
+			var oldSize int64
+			if oldObj, err := s.Objects.FindByKey(ctx, bucketID, key); err == nil {
+				oldSize = oldObj.Size
+			}
+			if current-oldSize+meta.Size > limits.StorageBytes {
+				_ = s.S3.Delete(ctx, s3Key)
+				return nil, repository.Wrap(models.ErrQuotaExceeded, fmt.Sprintf("upload exceeded storage quota of %d bytes", limits.StorageBytes))
+			}
+		}
+	}
+
+	return s.Objects.Upsert(ctx, bucketID, key, meta.ContentType, meta.ETag, sha256, meta.Size, "STANDARD")
 }
 
 // PresignDownload returns a signed GET URL for an object.

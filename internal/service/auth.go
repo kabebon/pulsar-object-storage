@@ -154,6 +154,9 @@ func (s *AuthService) StartPasswordReset(ctx context.Context, email, ip, ua stri
 		}
 		return err
 	}
+	if user.Status == models.UserStatusUnverified {
+		return nil
+	}
 	_ = s.Tokens.InvalidateType(ctx, user.ID, models.VerificationReset)
 	token, err := RandomToken(tokenEntropy)
 	if err != nil {

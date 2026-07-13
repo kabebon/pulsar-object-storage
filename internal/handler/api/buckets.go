@@ -25,17 +25,17 @@ func NewBucketsHandler(storage *service.StorageService) *BucketsHandler {
 // Routes registers bucket routes under /buckets and returns the sub-router.
 func (h *BucketsHandler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Get("/", h.list)
-	r.Post("/", h.create)
+	r.With(middleware.RequireScope("buckets:read")).Get("/", h.list)
+	r.With(middleware.RequireScope("buckets:write")).Post("/", h.create)
 	r.Route("/{id}", func(r chi.Router) {
-		r.Get("/", h.get)
-		r.Patch("/", h.update)
-		r.Delete("/", h.delete)
-		r.Get("/objects", h.listObjects)
-		r.Post("/objects/presign-upload", h.presignUpload)
-		r.Post("/objects/confirm", h.confirmUpload)
-		r.Get("/objects/{key}/presign-download", h.presignDownload)
-		r.Delete("/objects/{key}", h.deleteObject)
+		r.With(middleware.RequireScope("buckets:read")).Get("/", h.get)
+		r.With(middleware.RequireScope("buckets:write")).Patch("/", h.update)
+		r.With(middleware.RequireScope("buckets:write")).Delete("/", h.delete)
+		r.With(middleware.RequireScope("objects:read")).Get("/objects", h.listObjects)
+		r.With(middleware.RequireScope("objects:write")).Post("/objects/presign-upload", h.presignUpload)
+		r.With(middleware.RequireScope("objects:write")).Post("/objects/confirm", h.confirmUpload)
+		r.With(middleware.RequireScope("objects:read")).Get("/objects/{key}/presign-download", h.presignDownload)
+		r.With(middleware.RequireScope("objects:write")).Delete("/objects/{key}", h.deleteObject)
 	})
 	return r
 }
@@ -244,8 +244,9 @@ func parseID(r *http.Request) (uuid.UUID, *httperr.AppError) {
 }
 
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
+	ip := r.RemoteAddr
+	if idx := strings.LastIndexByte(ip, ':'); idx > 0 {
+		ip = ip[:idx]
 	}
-	return r.RemoteAddr
+	return ip
 }

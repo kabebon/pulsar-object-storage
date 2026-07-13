@@ -7,6 +7,7 @@ import (
 
 	httperr "pulsar/internal/errors"
 	"pulsar/internal/repository"
+	"pulsar/internal/middleware"
 )
 
 // UserHandler exposes the current user profile and usage summary.
@@ -23,8 +24,8 @@ func NewUserHandler(users *repository.UsersRepo, usage *repository.UsageRepo) *U
 // Routes registers /me routes and returns the sub-router.
 func (h *UserHandler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Get("/", h.me)
-	r.Get("/usage", h.usageSummary)
+	r.With(middleware.RequireScope("profile:read")).Get("/", h.me)
+	r.With(middleware.RequireScope("profile:read")).Get("/usage", h.usageSummary)
 	return r
 }
 

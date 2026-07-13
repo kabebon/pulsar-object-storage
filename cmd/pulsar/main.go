@@ -155,14 +155,8 @@ func run(logger *slog.Logger) error {
 		Audit: auditRepo,
 	})
 
-	// Billing — Stripe, YooKassa, CryptoBot.
+	// Billing — YooKassa, CryptoBot.
 	// Each provider runs in no-provider mode when its key/token is missing.
-	billingSvc := billing.New(cfg.Stripe, plansRepo, subsRepo, usersRepo)
-	if billingSvc.Enabled() {
-		logger.Info("stripe billing enabled")
-	} else {
-		logger.Info("stripe billing disabled (no STRIPE_SECRET_KEY); running in no-provider mode")
-	}
 
 	yookassaSvc := billing.NewYooKassa(cfg.YooKassa, plansRepo, subsRepo, usersRepo)
 	if yookassaSvc.Enabled() {
@@ -178,7 +172,7 @@ func run(logger *slog.Logger) error {
 		logger.Info("cryptobot billing disabled (no CRYPTOBOT_TOKEN)")
 	}
 
-	billingH := webhandler.NewBillingHandler(cfg, billingSvc, yookassaSvc, cryptobotSvc, subsRepo, plansRepo, usageRepo)
+	billingH := webhandler.NewBillingHandler(cfg, yookassaSvc, cryptobotSvc, subsRepo, plansRepo, usageRepo)
 
 	// Custom domains + CDN.
 	domainsRepo := repository.NewCustomDomainsRepo(db)
@@ -204,7 +198,7 @@ func run(logger *slog.Logger) error {
 
 	// Webhook router (Stripe + YooKassa + CryptoBot) — bypasses CSRF, always mounted.
 	var webhookRouter http.Handler
-	webhookRouter = apihandler.NewWebhooksHandler(billingSvc, yookassaSvc, cryptobotSvc).Routes()
+	webhookRouter = apihandler.NewWebhooksHandler(yookassaSvc, cryptobotSvc).Routes()
 
 	// REST API v1 router (bearer-token auth, no CSRF).
 	var apiRouter http.Handler

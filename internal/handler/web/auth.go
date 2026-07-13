@@ -31,13 +31,11 @@ func NewAuthHandler(cfg *config.Config, auth *service.AuthService) *AuthHandler 
 // Routes registers the public auth pages onto the provided router.
 func (h *AuthHandler) Routes(r chi.Router) {
 	r.Get("/register", h.showRegister)
-	r.Post("/register", h.submitRegister)
 	r.Get("/login", h.showLogin)
-	r.Post("/login", h.submitLogin)
 	r.Get("/logout", h.logout)
 	r.Post("/logout", h.logout)
 	r.Get("/forgot-password", h.showForgot)
-	r.Post("/forgot-password", h.submitForgot)
+
 	r.Get("/reset-password", h.showReset)
 	r.Post("/reset-password", h.submitReset)
 	r.Get("/verify-email", h.verifyEmail)
@@ -348,12 +346,6 @@ func clearSessionCookie(w http.ResponseWriter, cfg *config.Config) {
 }
 
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.IndexByte(xff, ','); i > 0 {
-			return strings.TrimSpace(xff[:i])
-		}
-		return strings.TrimSpace(xff)
-	}
 	host := r.RemoteAddr
 	if i := strings.LastIndexByte(host, ':'); i > 0 {
 		return host[:i]
