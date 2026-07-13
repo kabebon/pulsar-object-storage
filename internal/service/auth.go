@@ -122,6 +122,9 @@ func (s *AuthService) Login(ctx context.Context, email, password, clientIP, ua s
 		_ = s.Audit.Record(ctx, &user.ID, models.AuditLoginFailed, clientIP, ua, url.Values{"reason": {"bad_password"}})
 		return nil, models.ErrInvalidCredentials
 	}
+	if user.Status == models.UserStatusUnverified {
+		return nil, repository.Wrap(models.ErrForbidden, "Пожалуйста, подтвердите email перед входом.")
+	}
 	if user.Status == models.UserStatusSuspended {
 		return nil, repository.Wrap(models.ErrForbidden, "account suspended")
 	}

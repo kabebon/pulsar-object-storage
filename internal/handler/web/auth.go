@@ -89,17 +89,20 @@ func (h *AuthHandler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
 	props := baseProps(h.cfg, r, "Подтверждение email", "", "")
 	if token == "" {
-		props.Errors = []string{"Ссылка недействительна."}
-		Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{Layout: props}))
+		Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{
+			Layout: props, Errors: []string{"Ссылка недействительна."},
+		}))
 		return
 	}
 	if err := h.auth.VerifyEmail(r.Context(), token, clientIP(r), r.UserAgent()); err != nil {
-		props.Errors = []string{humanizeErr(err)}
-		Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{Layout: props}))
+		Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{
+			Layout: props, Errors: []string{humanizeErr(err)},
+		}))
 		return
 	}
-	props.Success = "Email подтверждён. Теперь можно войти."
-	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{Layout: props}))
+	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{
+		Layout: props, Success: "Email подтверждён. Теперь можно войти.",
+	}))
 }
 
 // --- submit handlers ---
@@ -123,8 +126,9 @@ func (h *AuthHandler) submitRegister(w http.ResponseWriter, r *http.Request) {
 		h.renderRegisterErr(w, r, &props, []string{humanizeErr(err)})
 		return
 	}
-	props.Success = "Мы отправили письмо со ссылкой для подтверждения. Проверьте почту."
-	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{Layout: props}))
+	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{
+		Layout: props, Success: "", // Empty success triggers the "Проверьте почту" view
+	}))
 }
 
 func (h *AuthHandler) submitLogin(w http.ResponseWriter, r *http.Request) {
@@ -171,8 +175,10 @@ func (h *AuthHandler) submitForgot(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	_ = h.auth.StartPasswordReset(r.Context(), email, clientIP(r), r.UserAgent())
 	props := baseProps(h.cfg, r, "Восстановление пароля", "", "")
-	props.Success = "Если аккаунт с таким email существует, мы отправили инструкцию."
-	Render(w, r, 0, pages.ForgotPassword(pages.AuthPageProps{Layout: props, Email: email}))
+	Render(w, r, 0, pages.ForgotPassword(pages.AuthPageProps{
+		Layout: props, Email: email,
+		Success: "Если аккаунт с таким email существует, мы отправили инструкцию.",
+	}))
 }
 
 func (h *AuthHandler) submitReset(w http.ResponseWriter, r *http.Request) {
@@ -186,23 +192,27 @@ func (h *AuthHandler) submitReset(w http.ResponseWriter, r *http.Request) {
 	props := baseProps(h.cfg, r, "Новый пароль", "", "")
 
 	if token == "" {
-		props.Errors = []string{"Ссылка недействительна."}
-		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{Layout: props, Token: token}))
+		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{
+			Layout: props, Token: token, Errors: []string{"Ссылка недействительна."},
+		}))
 		return
 	}
 	if password != confirm {
-		props.Errors = []string{"Пароли не совпадают."}
-		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{Layout: props, Token: token}))
+		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{
+			Layout: props, Token: token, Errors: []string{"Пароли не совпадают."},
+		}))
 		return
 	}
 	if err := validatePassword(password); err != nil {
-		props.Errors = []string{err.Error()}
-		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{Layout: props, Token: token}))
+		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{
+			Layout: props, Token: token, Errors: []string{err.Error()},
+		}))
 		return
 	}
 	if err := h.auth.CompletePasswordReset(r.Context(), token, password, clientIP(r), r.UserAgent()); err != nil {
-		props.Errors = []string{humanizeErr(err)}
-		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{Layout: props, Token: token}))
+		Render(w, r, 0, pages.ResetPassword(pages.AuthPageProps{
+			Layout: props, Token: token, Errors: []string{humanizeErr(err)},
+		}))
 		return
 	}
 	http.Redirect(w, r, "/login?verified=1", http.StatusSeeOther)
@@ -216,8 +226,10 @@ func (h *AuthHandler) submitResend(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	_ = h.auth.ResendVerification(r.Context(), email, clientIP(r), r.UserAgent())
 	props := baseProps(h.cfg, r, "Отправить письмо повторно", "", "")
-	props.Success = "Если аккаунт существует и не подтверждён, мы отправили письмо повторно."
-	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{Layout: props}))
+	Render(w, r, 0, pages.VerifyEmail(pages.AuthPageProps{
+		Layout: props, 
+		Success: "Если аккаунт существует и не подтверждён, мы отправили письмо повторно.",
+	}))
 }
 
 // --- helpers ---
