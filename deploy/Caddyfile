@@ -29,14 +29,12 @@
 	}
 }
 
-# CDN front: serve public objects directly from origin with strong caching.
-# In production this hostname would be backed by a real CDN (CloudFront,
-# Cloudflare) and only Caddy here as fallback origin.
-cdn.pulsar.my.id {
-	reverse_proxy pulsar:8080
-	encode zstd gzip
-	header Cache-Control "public, max-age=3600"
-}
+# CDN front: uncomment and add DNS record for cdn.pulsar.my.id when CDN is ready.
+# cdn.pulsar.my.id {
+# 	reverse_proxy pulsar:8080
+# 	encode zstd gzip
+# 	header Cache-Control "public, max-age=3600"
+# }
 
 # Example of on-demand TLS for a customer domain (wildcard vhost):
 # https:// {
