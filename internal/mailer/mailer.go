@@ -5,7 +5,6 @@ package mailer
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"strings"
 
@@ -74,21 +73,14 @@ func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	opts := []gomail.Option{gomail.WithPort(m.port)}
 
 	// TLS mode depends on the well-known port convention:
-	//   465 → implicit SSL (connection is TLS from the first byte)
-	//         WithTLSConfig sets ServerName so SNI is sent correctly.
-	//   587 → STARTTLS (plain connection upgraded via STARTTLS command)
-	//   any → no TLS (local Mailpit, etc.)
+	//   465, 2465 → implicit SSL  (WithSSL — TLS from the first byte)
+	//   587, 2587 → STARTTLS mandatory
+	//   any       → no TLS (local Mailpit, etc.)
 	switch m.port {
-	case 465:
-		opts = append(opts,
-			gomail.WithSSL(),
-			gomail.WithTLSConfig(&tls.Config{ServerName: m.host}),
-		)
-	case 587:
-		opts = append(opts,
-			gomail.WithTLSPolicy(gomail.TLSMandatory),
-			gomail.WithTLSConfig(&tls.Config{ServerName: m.host}),
-		)
+	case 465, 2465:
+		opts = append(opts, gomail.WithSSL())
+	case 587, 2587:
+		opts = append(opts, gomail.WithTLSPolicy(gomail.TLSMandatory))
 	default:
 		opts = append(opts, gomail.WithTLSPolicy(gomail.NoTLS))
 	}
