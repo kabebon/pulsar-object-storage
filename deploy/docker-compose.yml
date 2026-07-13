@@ -113,9 +113,11 @@ services:
       S3_BUCKET: pulsar
       S3_REGION: us-east-1
       S3_USE_PATH_STYLE: "true"
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      SMTP_FROM: "Pulsar <no-reply@pulsar.local>"
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-Pulsar <no-reply@pulsar.local>}
       MIGRATIONS_DIR: /migrations
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
