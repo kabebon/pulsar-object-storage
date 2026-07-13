@@ -47,9 +47,12 @@ func New(cfg config.SMTPConfig) *SMTPMailer {
 //
 // Auth behaviour: when username/password are empty (the common local/dev case
 // against Mailpit) we skip SMTP AUTH entirely, which Mailpit accepts by default.
-// When credentials are present we use AUTH PLAIN. TLS policy is set to
-// "opportunistic" so a real provider's STARTTLS is used, but a plain-HTTP
-// Mailpit on port 1025 is still accepted without TLS.
+// When credentials are present we use AUTH PLAIN.
+//
+// TLS policy is selected automatically based on port:
+//   - port 465  → ImplicitTLS  (SendPulse, standard SSL submission)
+//   - port 587  → TLSOpportunistic (STARTTLS)
+//   - anything  → NoTLS (Mailpit on 1025, etc.)
 func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	em := gomail.NewMsg()
 	if err := em.From(m.from); err != nil {
@@ -65,12 +68,19 @@ func (m *SMTPMailer) Send(ctx context.Context, msg Message) error {
 	if msg.Plain != "" {
 		em.AddAlternativeString(gomail.TypeTextPlain, msg.Plain)
 	}
+
+	// Pick TLS policy based on well-known port conventions.
+	tlsPolicy := gomail.NoTLS
+	switch m.port {
+	case 465:
+		tlsPolicy = gomail.TLSOpportunistic // go-mail uses implicit TLS for port 465 automatically
+	case 587:
+		tlsPolicy = gomail.TLSOpportunistic
+	}
+
 	opts := []gomail.Option{
 		gomail.WithPort(m.port),
-		// NoTLS: do not attempt STARTTLS or implicit TLS. Mailpit on port 1025
-		// is plain SMTP; a real provider on 587 should be configured via a
-		// separate TLS-enabled mailer once we move off Mailpit.
-		gomail.WithTLSPolicy(gomail.NoTLS),
+		gomail.WithTLSPolicy(tlsPolicy),
 	}
 	if m.user != "" || m.pass != "" {
 		opts = append(opts,
