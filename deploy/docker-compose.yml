@@ -93,6 +93,7 @@ services:
       # These MUST be overridden here because they use Docker service hostnames,
       # not the values from .env (which point to localhost for local dev).
       HTTP_ADDR: ":8080"
+      DATABASE_URL: ""
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USER: "${POSTGRES_USER:-pulsar}"
