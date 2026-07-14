@@ -69,22 +69,16 @@ templ billingPlanCard(p PlanViewModel, currentSlug, csrf string, stripeEnabled b
 		</ul>
 		if p.Slug != currentSlug && p.Slug != "free" {
 			<div class="mt-5 space-y-3">
-				if yookassaEnabled || cryptobotEnabled {
 					<div class="flex gap-2">
-						if yookassaEnabled {
-							<form method="POST" action={ "/app/billing/subscribe/yookassa?plan=" + p.Slug + "&interval=monthly" } class="flex-1">
-								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 bg-[#b06a2c] hover:bg-[#8f511e] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В РУБЛЯХ</button>
-							</form>
-						}
-						if cryptobotEnabled {
-							<form method="POST" action={ "/app/billing/subscribe/cryptobot?plan=" + p.Slug + "&interval=monthly&asset=USDT" } class="flex-1">
-								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 bg-[#2b1d12] hover:bg-[#3d2a1c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#b06a2c] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В КРИПТО</button>
-							</form>
-						}
+						<form method="POST" action={ "/app/billing/subscribe/yookassa?plan=" + p.Slug + "&interval=monthly" } class="flex-1">
+							<input type="hidden" name="csrf_token" value={ csrf }/>
+							<button type="submit" class="w-full px-3 py-2 bg-[#b06a2c] hover:bg-[#8f511e] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В РУБЛЯХ</button>
+						</form>
+						<form method="POST" action={ "/app/billing/subscribe/cryptobot?plan=" + p.Slug + "&interval=monthly&asset=USDT" } class="flex-1">
+							<input type="hidden" name="csrf_token" value={ csrf }/>
+							<button type="submit" class="w-full px-3 py-2 bg-[#2b1d12] hover:bg-[#3d2a1c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#b06a2c] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В КРИПТО</button>
+						</form>
 					</div>
-				}
 				<!-- Stripe — международные карты -->
 				if stripeEnabled {
 					<div class="mt-3">

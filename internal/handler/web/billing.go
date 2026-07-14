@@ -122,6 +122,10 @@ func (h *BillingHandler) subscribeCryptoBot(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "не удалось создать инвойс CryptoBot: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	
+	// В России t.me заблокирован, поэтому используем tg:// ссылку для открытия приложения напрямую
+	payURL = strings.Replace(payURL, "https://t.me/CryptoBot?start=", "tg://resolve?domain=CryptoBot&start=", 1)
+	
 	http.Redirect(w, r, payURL, http.StatusSeeOther)
 }
 
