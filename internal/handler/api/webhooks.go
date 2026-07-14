@@ -3,8 +3,9 @@ package api
 import (
 	"context"
 	"io"
-	"net/http"
 	"log/slog"
+	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 

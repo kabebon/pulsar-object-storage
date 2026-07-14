@@ -37,12 +37,12 @@ func NewRouter(deps RouterDeps, rateLimit func(http.Handler) http.Handler) http.
 
 	// Bearer (API key) authentication. Resolves via the key service.
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.APIKeyAuth(func(ctx context.Context, token string) (string, string, error) {
-			uid, name, err := deps.Keys.Resolve(ctx, token)
+		r.Use(middleware.APIKeyAuth(func(ctx context.Context, token string) (string, string, []string, error) {
+			uid, email, scopes, err := deps.Keys.Resolve(ctx, token)
 			if err != nil {
-				return "", "", err
+				return "", "", nil, err
 			}
-			return uid.String(), name, nil
+			return uid.String(), email, scopes, nil
 		}))
 
 		if rateLimit != nil {
