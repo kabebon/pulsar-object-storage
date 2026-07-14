@@ -195,30 +195,46 @@ func (s *YooKassaService) HandleWebhook(ctx context.Context, body []byte, remote
 func (s *YooKassaService) onPaymentSucceeded(ctx context.Context, payment ykPaymentResponse) error {
 	meta := payment.Metadata
 	if meta == nil {
+		slog.Warn("yookassa webhook: no metadata found", "payment_id", payment.ID)
 		return nil // no metadata — not a Pulsar payment
 	}
 	rawUID, ok1 := meta["user_id"]
 	planSlug, ok2 := meta["plan"]
+	
+	slog.Info("yookassa webhook metadata", "user_id", rawUID, "plan", planSlug, "ok1", ok1, "ok2", ok2)
+	
 	if !ok1 || !ok2 || rawUID == "" || planSlug == "" {
+		slog.Warn("yookassa webhook: missing required metadata fields")
 		return nil
 	}
 
 	userID, err := uuid.Parse(rawUID)
 	if err != nil {
+		slog.Error("yookassa webhook: invalid user_id", "rawUID", rawUID)
 		return fmt.Errorf("yookassa: invalid user_id in metadata: %w", err)
 	}
 
 	plan, err := s.plans.FindBySlug(ctx, planSlug)
 	if err != nil {
+		slog.Warn("yookassa webhook: plan not found by slug, falling back to free", "planSlug", planSlug, "error", err)
 		plan, err = s.plans.FindBySlug(ctx, "free")
 		if err != nil {
 			return err
 		}
+	} else {
+		slog.Info("yookassa webhook: found plan", "planID", plan.ID, "planSlug", plan.Slug)
 	}
 
+	slog.Info("yookassa webhook: upserting subscription", "userID", userID, "planID", plan.ID)
 	// Upsert subscription with active status.
 	// StripeCustomerID / StripeSubscriptionID are left empty — YooKassa uses payment IDs.
-	return s.subs.Upsert(ctx, userID, plan.ID, models.SubStatusActive, "", payment.ID)
+	err = s.subs.Upsert(ctx, userID, plan.ID, models.SubStatusActive, "", payment.ID)
+	if err != nil {
+		slog.Error("yookassa webhook: failed to upsert subscription", "error", err)
+	} else {
+		slog.Info("yookassa webhook: successfully updated subscription")
+	}
+	return err
 }
 
 // --- HTTP helpers ---
