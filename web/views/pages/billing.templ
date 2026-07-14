@@ -11,7 +11,7 @@ templ BillingPage(props layouts.LayoutProps, sub *models.Subscription, usage mod
 		<h1 class="font-pixel text-2xl text-[#2b1d12]">Тариф и оплата</h1>
 
 		<!-- Current plan + usage -->
-		<div class="mt-6 grid lg:grid-cols-3 gap-4 stagger">
+		<div class="mt-6 grid md:grid-cols-2 gap-4 stagger">
 			<div class="p-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12]">
 				<div class="text-sm text-[#6b5440]">Текущий тариф</div>
 				<div class="mt-1.5 font-pixel text-2xl capitalize text-[#2b1d12]">{ sub.PlanSlug }</div>
@@ -21,11 +21,6 @@ templ BillingPage(props layouts.LayoutProps, sub *models.Subscription, usage mod
 				<div class="text-sm text-[#6b5440]">Хранилище</div>
 				<div class="mt-1.5 font-pixel text-2xl tabular-nums text-[#2b1d12]">{ formatBytes(usage.StorageBytes) }</div>
 				@bar(usage.StorageBytes, planStorageBytes(sub.PlanSlug))
-			</div>
-			<div class="p-6 border-2 border-[#2b1d12] bg-[#fffaf2] shadow-[4px_4px_0_0_#2b1d12]">
-				<div class="text-sm text-[#6b5440]">Трафик (30 дней)</div>
-				<div class="mt-1.5 font-pixel text-2xl tabular-nums text-[#2b1d12]">{ formatBytes(usage.BandwidthBytes) }</div>
-				@bar(usage.BandwidthBytes, planBandwidthBytes(sub.PlanSlug))
 			</div>
 		</div>
 
