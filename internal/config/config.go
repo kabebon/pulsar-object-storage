@@ -143,7 +143,7 @@ func Load() (*Config, error) {
 			TrustedProxies:  envSlice("TRUSTED_PROXIES"),
 		},
 		DB: DBConfig{
-			DSN:             env("DATABASE_URL", "postgres://pulsar:pulsar@localhost:5432/pulsar?sslmode=disable"),
+			DSN:             dbDSN(),
 			MaxOpenConns:    int32(envInt("DB_MAX_OPEN_CONNS", 25)),
 			MaxIdleConns:    int32(envInt("DB_MAX_IDLE_CONNS", 5)),
 			ConnMaxLifetime: envDuration("DB_CONN_MAX_LIFETIME", time.Hour),
@@ -291,4 +291,22 @@ func envSlice(key string) []string {
 		}
 	}
 	return out
+}
+
+// dbDSN builds the Postgres DSN. Priority:
+//  1. DATABASE_URL — explicit full DSN (local dev / CI).
+//  2. DB_HOST / DB_USER / DB_PASSWORD / DB_NAME / DB_PORT — individual
+//     component variables, useful in Docker where composing a URL with
+//     shell-substitution inside a YAML string is unreliable.
+func dbDSN() string {
+	if dsn, ok := os.LookupEnv("DATABASE_URL"); ok && dsn != "" {
+		return dsn
+	}
+	host := env("DB_HOST", "localhost")
+	port := env("DB_PORT", "5432")
+	user := env("DB_USER", "pulsar")
+	pass := env("DB_PASSWORD", "pulsar")
+	name := env("DB_NAME", "pulsar")
+	ssl := env("DB_SSLMODE", "disable")
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, pass, host, port, name, ssl)
 }

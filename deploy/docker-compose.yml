@@ -93,7 +93,12 @@ services:
       # These MUST be overridden here because they use Docker service hostnames,
       # not the values from .env (which point to localhost for local dev).
       HTTP_ADDR: ":8080"
-      DATABASE_URL: "postgres://${POSTGRES_USER:-pulsar}:${POSTGRES_PASSWORD:-ChangeMe123!}@postgres:5432/pulsar?sslmode=disable"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: "${POSTGRES_USER:-pulsar}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD:-ChangeMe123!}"
+      DB_NAME: pulsar
+      DB_SSLMODE: disable
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-ChangeMe123!}"
       S3_ENDPOINT: http://minio:9000
