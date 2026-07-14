@@ -69,50 +69,29 @@ templ billingPlanCard(p PlanViewModel, currentSlug, csrf string, stripeEnabled b
 		</ul>
 		if p.Slug != currentSlug && p.Slug != "free" {
 			<div class="mt-5 space-y-3">
-				<!-- YooKassa — банковская карта / СБП -->
-				if yookassaEnabled {
-					<div>
-						<p class="text-xs text-[#9a8770] mb-1.5">💳 Банковская карта / СБП</p>
-						<div class="flex gap-2">
+				if yookassaEnabled || cryptobotEnabled {
+					<div class="flex gap-2">
+						if yookassaEnabled {
 							<form method="POST" action={ "/app/billing/subscribe/yookassa?plan=" + p.Slug + "&interval=monthly" } class="flex-1">
 								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 bg-[#b06a2c] hover:bg-[#8f511e] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] text-[#fffaf2] text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">Помес.</button>
+								<button type="submit" class="w-full px-3 py-2 bg-[#b06a2c] hover:bg-[#8f511e] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В РУБЛЯХ</button>
 							</form>
-							<form method="POST" action={ "/app/billing/subscribe/yookassa?plan=" + p.Slug + "&interval=yearly" } class="flex-1">
-								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] bg-[#fffaf2] hover:bg-[#f0e6d6] text-[#2b1d12] text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">Год −20%</button>
-							</form>
-						</div>
-					</div>
-				}
-				<!-- CryptoBot — крипто (USDT/TON/BTC) -->
-				if cryptobotEnabled {
-					<div>
-						<p class="text-xs text-[#9a8770] mb-1.5">₿ Крипто (USDT · TON · BTC)</p>
-						<div class="flex gap-2">
+						}
+						if cryptobotEnabled {
 							<form method="POST" action={ "/app/billing/subscribe/cryptobot?plan=" + p.Slug + "&interval=monthly&asset=USDT" } class="flex-1">
 								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 bg-[#2b1d12] hover:bg-[#3d2a1c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#b06a2c] text-[#fffaf2] text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">USDT/мес</button>
+								<button type="submit" class="w-full px-3 py-2 bg-[#2b1d12] hover:bg-[#3d2a1c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#b06a2c] text-[#fffaf2] text-[10px] sm:text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">В КРИПТО</button>
 							</form>
-							<form method="POST" action={ "/app/billing/subscribe/cryptobot?plan=" + p.Slug + "&interval=yearly&asset=USDT" } class="flex-1">
-								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] bg-[#fffaf2] hover:bg-[#f0e6d6] text-[#2b1d12] text-xs font-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5">USDT/год</button>
-							</form>
-						</div>
+						}
 					</div>
 				}
 				<!-- Stripe — международные карты -->
 				if stripeEnabled {
-					<div>
-						<p class="text-xs text-[#9a8770] mb-1.5">🌐 Международная карта (Stripe)</p>
+					<div class="mt-3">
 						<div class="flex gap-2">
 							<form method="POST" action={ "/app/billing/subscribe?plan=" + p.Slug + "&interval=monthly" } class="flex-1">
 								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 bg-[#b06a2c] hover:bg-[#8f511e] border-2 border-[#2b1d12] text-[#fffaf2] text-xs font-medium transition-colors">Помесячно</button>
-							</form>
-							<form method="POST" action={ "/app/billing/subscribe?plan=" + p.Slug + "&interval=yearly" } class="flex-1">
-								<input type="hidden" name="csrf_token" value={ csrf }/>
-								<button type="submit" class="w-full px-3 py-2 border-2 border-[#2b1d12] bg-[#fffaf2] hover:bg-[#f0e6d6] text-[#2b1d12] text-xs font-medium transition-colors">Год −20%</button>
+								<button type="submit" class="w-full px-3 py-2 bg-[#fffaf2] hover:bg-[#f0e6d6] border-2 border-[#2b1d12] text-[#2b1d12] text-[10px] sm:text-xs font-pixel transition-colors">STRIPE</button>
 							</form>
 						</div>
 					</div>
