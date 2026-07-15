@@ -46,9 +46,9 @@ Mailpit (локальный SMTP) · Prometheus (метрики) · slog (лог
 
 ---
 
-### Вариант 1: Полный стек через Docker (рекомендуется)
+### Вариант 1: Полный стек через Docker (локальная разработка, рекомендуется)
 
-Это самый простой способ запуска — все зависимости поднимаются автоматически.
+Это самый простой способ запуска — все зависимости поднимаются автоматически. По умолчанию всё настроено для работы на `localhost`.
 
 #### Шаг 1. Клонировать репозиторий
 
@@ -65,14 +65,15 @@ cp deploy/.env.example .env
 
 Файл `.env` должен находиться **в корне проекта** (рядом с `go.mod`).
 
-> ⚠️ **Важно про `--env-file .env`.** Команда ниже использует `-f deploy/docker-compose.yml`, а значит Compose по умолчанию ищет `.env` для подстановки `${VAR}` в каталоге `deploy/`, а не в корне. Чтобы значения из корневого `.env` (`S3_PUBLIC_ENDPOINT`, `CORS_ALLOWED_ORIGINS`, `CDN_HOST` и др.) реально попадали в конфигурацию сервисов, **всегда добавляйте `--env-file .env`**. Без него переменные тихо откатываются к дефолтам, рассчитанным на локальную разработку (`http://localhost:9000` и т.п.), и загрузка файлов в проде падает с «failed to fetch».
+> ⚠️ **Критично про `--env-file .env`.** Команда ниже использует `-f deploy/docker-compose.yml`, а значит Compose по умолчанию ищет `.env` для подстановки `${VAR}` в каталоге `deploy/`, а не в корне. Чтобы значения из корневого `.env` реально попадали в конфигурацию сервисов, **всегда добавляйте `--env-file .env`**. Без него переменные тихо откатываются к дефолтам, рассчитанным на локальную разработку (`http://localhost:9000` и т.п.), и в проде загрузка файлов падает с «failed to fetch».
 
-> **Для первого запуска менять ничего не нужно** — значения по умолчанию рассчитаны на локальную разработку.
+> **Для первого локального запуска менять ничего не нужно** — значения по умолчанию рассчитаны на `localhost`.
 
 #### Шаг 3. Поднять весь стек
 
 ```bash
 docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
+# или: make docker-up
 ```
 
 #### Шаг 4. Проверить, что всё работает
@@ -93,6 +94,8 @@ curl http://localhost:8080/healthz
 4. Войдите в кабинет на **http://localhost:8080/login**
 5. Создавайте бакеты, загружайте файлы и управляйте ключами API.
 
+> Для локального запуска MinIO (API `:9000`, консоль `:9001`) проброшены на `127.0.0.1`, поэтому presigned-загрузки работают «из коробки».
+
 ---
 
 ### Вариант 2: Локальная разработка (Go + Docker для инфраструктуры)
@@ -109,6 +112,47 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres redis
 make templates
 make run
 ```
+
+---
+
+## 📁 Загрузка файлов (как это работает)
+
+Pulsar использует **presigned-схему**: браузер грузит файл **напрямую в хранилище** (MinIO), минуя приложение. Так файловые байты не ложатся на сервер и не тратят его трафик.
+
+Цепочка из трёх запросов (см. `web/static/js/uploader.js`):
+
+1. `POST /app/buckets/{id}/objects/presign-upload` — приложение подписывает URL и отдаёт его браузеру.
+2. `PUT https://<storage-host>/pulsar/...` — браузер грузит файл напрямую в MinIO по подписанному URL.
+3. `POST /app/buckets/{id}/objects/confirm` — приложение записывает метаданные (размер, тип) в БД.
+
+Шаг 2 — кросс-доменный (домен приложения → домен хранилища), поэтому требует двух вещей:
+- **CORS** на стороне хранилища (`MINIO_API_CORS_ALLOW_ORIGIN`).
+- **Публичной доступности** домена хранилища для браузера (`S3_PUBLIC_ENDPOINT` + DNS).
+
+### В локальной разработке
+
+Работает из коробки: MinIO проброшен на `127.0.0.1:9000`, CORS разрешает `localhost:8080`.
+
+### В продакшене (за Caddy)
+
+MinIO закрыт внутри Docker-сети, поэтому браузер до него не достучится напрямую. Решение — отдельный поддомен хранения, который Caddy проксирует на `minio:9000` (см. `deploy/Caddyfile`, блок `{$CDN_HOST}`). Все настройки задаются в `.env` (см. «Production-деплой» ниже).
+
+### Если «failed to fetch» в проде
+
+Это частый симптом при переносе на прод. Падает шаг 2 (`PUT`). Чеклист по порядку:
+
+1. **DNS.** Проверьте, что `<CDN_HOST>` резолвится во внешний IP сервера: `getent hosts cdn.example.com`.
+2. **`.env` + `--env-file .env`.** Убедитесь, что в `.env` заданы `S3_PUBLIC_ENDPOINT`, `CORS_ALLOWED_ORIGINS`, `CDN_HOST`, и что команда запуска содержит `--env-file .env` (иначе переменные не интерполируются — см. предупреждение выше).
+3. **Контейнеры пересозданы.** Переменные читаются только при создании контейнера. После правки `.env`: `docker compose ... up -d --force-recreate pulsar minio`.
+4. **TLS-сертификат Caddy.** Проверьте `logs caddy` на ошибки ACME. При первом запуске Caddy получает сертификат автоматически, но DNS уже должен резолвиться.
+5. **CORS на MinIO.** Preflight-проверка:
+   ```bash
+   curl -ski -X OPTIONS https://<CDN_HOST>/pulsar/ \
+     -H "Origin: https://<PULSAR_HOST>" \
+     -H "Access-Control-Request-Method: PUT" \
+     -D - -o /dev/null | grep -i access-control
+   ```
+   Должны быть строки `access-control-allow-origin: https://<PULSAR_HOST>`. Если их нет — `CORS_ALLOWED_ORIGINS` не подхватился MinIO (см. п. 2–3).
 
 ---
 
@@ -156,24 +200,69 @@ make run
 
 ## 🔧 Production-деплой
 
-Для запуска в боевых условиях предусмотрен профиль `prod`, который включает веб-сервер Caddy. Caddy автоматически получит SSL/TLS сертификаты для вашего основного домена и любых пользовательских CNAME доменов:
+Для запуска в боевых условиях предусмотрен профиль `prod`, который включает веб-сервер Caddy с автоматическим HTTPS (Let's Encrypt). Caddy терминирует TLS для двух доменов:
+
+- **`{$PULSAR_HOST}`** (домен приложения) → `pulsar:8080`
+- **`{$CDN_HOST}`** (домен хранения) → `minio:9000` — чтобы браузер мог грузить/скачивать файлы напрямую по presigned-ссылкам.
+
+### Шаг 1. DNS
+
+Добавьте две A-записи, обе указывающие на IP сервера:
+
+| Домен | Назначение |
+|-------|-----------|
+| `<your-domain>` (напр. `pulsar.example.com`) | Приложение |
+| `cdn.<your-domain>` (напр. `cdn.pulsar.example.com`) | Хранилище (MinIO) |
+
+Без DNS-записи для `cdn.` Caddy не сможет выпустить TLS-сертификат, и загрузка файлов не заработает.
+
+### Шаг 2. Настроить `.env`
+
+Скопируйте `deploy/.env.example` в `.env` и задайте продакшен-значения (минимальный набор для рабочей загрузки файлов):
 
 ```bash
-# 1. Укажите домен
-export PUBLIC_BASE_URL=https://pulsar.example.com
-export PULSAR_HOST=pulsar.example.com
+APP_ENV=production
+PUBLIC_BASE_URL=https://pulsar.example.com
 
-# 2. Поднимите стек (с профилем prod поднимется Caddy + автоматический TLS)
-docker compose --env-file .env -f deploy/docker-compose.yml --profile prod up -d
+# Домены для Caddy
+PULSAR_HOST=pulsar.example.com
+CDN_HOST=cdn.pulsar.example.com
+
+# Хранилище: домен, по которому БРАУЗЕР обращается к MinIO (через Caddy)
+S3_PUBLIC_ENDPOINT=https://cdn.pulsar.example.com
+
+# CORS: origin домена приложения, с которого браузер шлёт PUT в MinIO
+CORS_ALLOWED_ORIGINS=https://pulsar.example.com
+
+# Безопасные куки (трафик за Caddy = HTTPS)
+SESSION_COOKIE_SECURE=true
+CSRF_SECURE=true
+
+# Сгенерируйте случайные секреты длиной от 32 байт
+JWT_SECRET=<openssl rand -base64 48>
 ```
+
+Полный список переменных и комментарии — в `deploy/.env.example`.
+
+### Шаг 3. Поднять стек
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml --profile prod up -d --build
+# или: make docker-up-prod
+```
+
+> ⚠️ `--env-file .env` обязателен — иначе переменные из корневого `.env` не подставятся в конфигурацию сервисов.
 
 ### Production-чеклист
 
 - [ ] Установить `APP_ENV=production`
-- [ ] Сгенерировать безопасные `JWT_SECRET` и `CDN_SIGN_KEY`
+- [ ] Добавить DNS A-записи для `PULSAR_HOST` и `CDN_HOST`
+- [ ] Задать `S3_PUBLIC_ENDPOINT=https://<CDN_HOST>` и `CORS_ALLOWED_ORIGINS=https://<PULSAR_HOST>`
+- [ ] Сгенерировать безопасные `JWT_SECRET` (от 32 байт)
 - [ ] Включить безопасные куки: `SESSION_COOKIE_SECURE=true`, `CSRF_SECURE=true`
 - [ ] Настроить реальный SMTP сервер
 - [ ] Прописать live-ключи ЮKassa и CryptoBot и зарегистрировать webhooks
+- [ ] Проверить preflight-CORS (см. раздел «Загрузка файлов»)
 
 ---
 
