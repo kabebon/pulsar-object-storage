@@ -46,6 +46,12 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeMe123!}
+    # Expose the S3 API (:9000) so browsers can PUT presigned uploads directly,
+    # and the admin console (:9001). Local dev only; behind Caddy (prod profile)
+    # these are not published because traffic flows through the reverse proxy.
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - miniodata:/data
     healthcheck:
@@ -54,17 +60,28 @@ services:
       timeout: 5s
       retries: 10
 
-  # Provision the default bucket once MinIO is up.
+  # Provision the default bucket once MinIO is up and apply the CORS policy
+  # the browser uploader needs (presigned PUT from the app origin to the
+  # storage origin is cross-origin; without CORS the browser blocks it with
+  # "failed to fetch"). The init script builds the CORS XML at runtime from
+  # CORS_ALLOWED_ORIGINS so the same image works for dev (localhost) and prod
+  # (real domains) — see deploy/minio-init.sh.
   minio-init:
     image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-admin} $${MINIO_ROOT_PASSWORD:-ChangeMe123!} &&
-      mc mb --ignore-existing local/pulsar
-      "
+    environment:
+      # `mc` reads aliases from MC_HOST_<name> env, so no `mc alias set` needed.
+      MC_HOST_local: http://${MINIO_ROOT_USER:-admin}:${MINIO_ROOT_PASSWORD:-ChangeMe123!}@minio:9000
+      MINIO_BUCKET: pulsar
+      # Origins allowed to perform cross-origin PUT/GET against the bucket.
+      # Defaults to the local dev origins; override in .env for prod, e.g.
+      #   CORS_ALLOWED_ORIGINS=https://app.example.com
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080 http://127.0.0.1:8080}
+    volumes:
+      - ./minio-init.sh:/minio-init.sh:ro
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
 
   mailpit:
     image: axllent/mailpit:latest
@@ -103,6 +120,13 @@ services:
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-ChangeMe123!}"
       S3_ENDPOINT: http://minio:9000
+      # The host BROWSERS use to reach the bucket for presigned uploads/downloads.
+      # S3_ENDPOINT above is the Docker-internal origin the app talks to; this one
+      # is what gets baked into presigned URLs. For local dev it must point at the
+      # host-exposed port (see minio.ports), otherwise the browser is handed a URL
+      # like http://minio:9000/... which it cannot resolve → "failed to fetch".
+      # Override via .env when deploying behind a real CDN.
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       S3_ACCESS_KEY: "${MINIO_ROOT_USER:-admin}"
       S3_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-ChangeMe123!}"
       S3_BUCKET: pulsar

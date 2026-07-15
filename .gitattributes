@@ -1,0 +1,8 @@
+# Ensure LF line endings for files executed inside Linux containers.
+# core.autocrlf=true on Windows would otherwise check these out as CRLF and
+# break the shell scripts (e.g. minio-init.sh run in the minio/mc container).
+*.sh         text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+Dockerfile*  text eol=lf
+Caddyfile    text eol=lf
