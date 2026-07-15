@@ -24,7 +24,6 @@ import (
 	"github.com/google/uuid"
 
 	"pulsar/internal/config"
-	"pulsar/internal/models"
 	"pulsar/internal/repository"
 )
 
@@ -214,9 +213,11 @@ func (s *CryptoBotService) onInvoicePaid(ctx context.Context, invoice cbInvoice)
 		}
 	}
 
-	// Upsert subscription — CryptoBot has no customer ID concept; we use invoice_id as reference.
+	// Activate / extend the subscription by one billing interval. Interval is
+	// read from the invoice payload (set when creating the invoice); default monthly.
 	invoiceRef := strconv.FormatInt(invoice.InvoiceID, 10)
-	return s.subs.Upsert(ctx, userID, plan.ID, models.SubStatusActive, "", invoiceRef)
+	interval := repository.IntervalToSQL(meta.Interval)
+	return s.subs.ExtendPeriod(ctx, userID, plan.ID, interval, invoiceRef)
 }
 
 // verifySignature validates the HMAC-SHA256 signature sent by Crypto Pay.

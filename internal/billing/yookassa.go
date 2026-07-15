@@ -21,7 +21,6 @@ import (
 	"github.com/google/uuid"
 
 	"pulsar/internal/config"
-	"pulsar/internal/models"
 	"pulsar/internal/repository"
 )
 
@@ -201,9 +200,9 @@ func (s *YooKassaService) onPaymentSucceeded(ctx context.Context, payment ykPaym
 	}
 	rawUID, ok1 := meta["user_id"]
 	planSlug, ok2 := meta["plan"]
-	
+
 	slog.Info("yookassa webhook metadata", "user_id", rawUID, "plan", planSlug, "ok1", ok1, "ok2", ok2)
-	
+
 	if !ok1 || !ok2 || rawUID == "" || planSlug == "" {
 		slog.Warn("yookassa webhook: missing required metadata fields")
 		return nil
@@ -226,12 +225,12 @@ func (s *YooKassaService) onPaymentSucceeded(ctx context.Context, payment ykPaym
 		slog.Info("yookassa webhook: found plan", "planID", plan.ID, "planSlug", plan.Slug)
 	}
 
-	slog.Info("yookassa webhook: upserting subscription", "userID", userID, "planID", plan.ID)
-	// Upsert subscription with active status.
-	// StripeCustomerID / StripeSubscriptionID are left empty — YooKassa uses payment IDs.
-	err = s.subs.Upsert(ctx, userID, plan.ID, models.SubStatusActive, "", payment.ID)
-	if err != nil {
-		slog.Error("yookassa webhook: failed to upsert subscription", "error", err)
+	slog.Info("yookassa webhook: extending subscription", "userID", userID, "planID", plan.ID)
+	// Activate / extend the subscription by one billing interval. interval is
+	// read from payment metadata (set when creating the payment); default monthly.
+	interval := repository.IntervalToSQL(meta["interval"])
+	if err := s.subs.ExtendPeriod(ctx, userID, plan.ID, interval, payment.ID); err != nil {
+		slog.Error("yookassa webhook: failed to extend subscription", "error", err)
 	} else {
 		slog.Info("yookassa webhook: successfully updated subscription")
 	}

@@ -139,6 +139,45 @@ func (r *SubscriptionsRepo) Upsert(ctx context.Context, userID, planID uuid.UUID
 	return err
 }
 
+// IntervalToSQL maps a billing interval to a PostgreSQL interval string that
+// can be safely inlined into a query. Only whitelisted values are returned, so
+// there is no injection risk from user-supplied input.
+func IntervalToSQL(interval string) string {
+	if interval == "yearly" {
+		return "1 year"
+	}
+	return "1 month"
+}
+
+// ExtendPeriod activates/extends the user's subscription by one billing interval.
+//
+// Stacking semantics (computed atomically inside the DB to avoid races on a
+// double payment):
+//   - same plan + not yet expired → current_period_end += interval (renewal)
+//   - plan change or already expired → current_period_end = now + interval
+//
+// pgInterval must be a value produced by intervalToSQL ("1 month" / "1 year").
+// paymentRef is stored in stripe_subscription_id (YooKassa payment id /
+// CryptoBot invoice id) as the provider reference.
+func (r *SubscriptionsRepo) ExtendPeriod(ctx context.Context, userID, planID uuid.UUID, pgInterval, paymentRef string) error {
+	const q = `
+        INSERT INTO subscriptions (user_id, plan_id, status, current_period_end, stripe_subscription_id)
+        VALUES ($1, $2, 'active', now() + $3::interval, NULLIF($4,''))
+        ON CONFLICT (user_id) DO UPDATE
+          SET plan_id = EXCLUDED.plan_id,
+              status = 'active',
+              current_period_end = CASE
+                WHEN subscriptions.plan_id = EXCLUDED.plan_id
+                     AND subscriptions.current_period_end > now()
+                  THEN subscriptions.current_period_end + $3::interval
+                ELSE now() + $3::interval
+              END,
+              stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+              updated_at = now()`
+	_, err := r.db.Pool.Exec(ctx, q, userID, planID, pgInterval, paymentRef)
+	return err
+}
+
 // PlanSlugForUser returns the plan slug for the user's current subscription,
 // or "" when they have none. Used by the middleware.RefreshPlan middleware to
 // show the live plan in the UI without relying on the login-time session cache.
