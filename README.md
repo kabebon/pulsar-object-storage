@@ -63,14 +63,16 @@ cd pulsar
 cp deploy/.env.example .env
 ```
 
-Файл `.env` должен находиться **в корне проекта** (рядом с `go.mod`). Docker Compose читает его оттуда.
+Файл `.env` должен находиться **в корне проекта** (рядом с `go.mod`).
+
+> ⚠️ **Важно про `--env-file .env`.** Команда ниже использует `-f deploy/docker-compose.yml`, а значит Compose по умолчанию ищет `.env` для подстановки `${VAR}` в каталоге `deploy/`, а не в корне. Чтобы значения из корневого `.env` (`S3_PUBLIC_ENDPOINT`, `CORS_ALLOWED_ORIGINS`, `CDN_HOST` и др.) реально попадали в конфигурацию сервисов, **всегда добавляйте `--env-file .env`**. Без него переменные тихо откатываются к дефолтам, рассчитанным на локальную разработку (`http://localhost:9000` и т.п.), и загрузка файлов в проде падает с «failed to fetch».
 
 > **Для первого запуска менять ничего не нужно** — значения по умолчанию рассчитаны на локальную разработку.
 
 #### Шаг 3. Поднять весь стек
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d --build
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
 ```
 
 #### Шаг 4. Проверить, что всё работает
@@ -98,7 +100,7 @@ curl http://localhost:8080/healthz
 #### Шаг 1. Поднять только инфраструктуру через Docker
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d postgres redis minio minio-init mailpit
+docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres redis minio minio-init mailpit
 ```
 
 #### Шаг 2. Сгенерировать шаблоны и запустить
@@ -161,8 +163,8 @@ make run
 export PUBLIC_BASE_URL=https://pulsar.example.com
 export PULSAR_HOST=pulsar.example.com
 
-# 2. Поднимите стек
-docker compose -f deploy/docker-compose.yml --profile prod up -d
+# 2. Поднимите стек (с профилем prod поднимется Caddy + автоматический TLS)
+docker compose --env-file .env -f deploy/docker-compose.yml --profile prod up -d
 ```
 
 ### Production-чеклист
