@@ -190,9 +190,9 @@ func run(logger *slog.Logger) error {
 	rlProvider := newRateLimitProvider(rateLimiter)
 	var webRouter http.Handler
 	if s3Client != nil {
-		webRouter = webhandler.NewRouter(cfg, authService, storageService, apiKeyService, apiKeysRepo, billingH, domainsH, usersRepo, auditRepo, rlProvider)
+		webRouter = webhandler.NewRouter(cfg, logger, authService, storageService, apiKeyService, apiKeysRepo, billingH, domainsH, usersRepo, auditRepo, subsRepo, rlProvider)
 	} else {
-		webRouter = webhandler.NewRouter(cfg, authService, nil, apiKeyService, apiKeysRepo, billingH, domainsH, usersRepo, auditRepo, rlProvider)
+		webRouter = webhandler.NewRouter(cfg, logger, authService, nil, apiKeyService, apiKeysRepo, billingH, domainsH, usersRepo, auditRepo, subsRepo, rlProvider)
 	}
 	_ = rlProvider // used inside router
 

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +24,7 @@ type StaticHandler struct{}
 // Auth routes are public; /app/* requires an authenticated session.
 func NewRouter(
 	cfg *config.Config,
+	logger *slog.Logger,
 	auth *service.AuthService,
 	storage *service.StorageService,
 	apiKeys *service.APIKeyService,
@@ -31,6 +33,7 @@ func NewRouter(
 	domainsH *DomainsHandler,
 	usersRepo *repository.UsersRepo,
 	auditRepo *repository.AuditLogRepo,
+	subsRepo *repository.SubscriptionsRepo,
 	rateLimiter middleware.RateLimiterProvider,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -82,6 +85,11 @@ func NewRouter(
 	// Authenticated area (/app/*). All dashboard routes live under /app.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(false))
+		// Re-read the user's plan from the DB on each request so the UI shows
+		// the live plan after an upgrade, instead of the login-time session cache.
+		if subsRepo != nil {
+			r.Use(middleware.RefreshPlan(subsRepo, logger))
+		}
 		r.Route("/app", func(r chi.Router) {
 			// Dashboard overview at /app itself.
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {

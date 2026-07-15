@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/google/uuid"
@@ -88,6 +89,10 @@ type SubscriptionsRepo struct {
 func NewSubscriptionsRepo(db *DB) *SubscriptionsRepo { return &SubscriptionsRepo{db: db} }
 
 // FindByUser returns the user's active subscription, joined with plan slug.
+// stripe_customer_id / stripe_subscription_id / current_period_end are nullable
+// in the schema, so they are scanned into sql.Null* and unwrapped here —
+// scanning NULL directly into string/time.Time makes pgx return an error,
+// which previously caused callers to fall back to the free plan.
 func (r *SubscriptionsRepo) FindByUser(ctx context.Context, userID uuid.UUID) (*models.Subscription, error) {
 	const q = `
         SELECT s.user_id, s.plan_id, p.slug, s.status, s.stripe_customer_id,
@@ -95,16 +100,26 @@ func (r *SubscriptionsRepo) FindByUser(ctx context.Context, userID uuid.UUID) (*
         FROM subscriptions s
         JOIN plans p ON p.id = s.plan_id
         WHERE s.user_id = $1`
-	var s models.Subscription
+	var (
+		s          models.Subscription
+		customerID sql.NullString
+		subID      sql.NullString
+		periodEnd  sql.NullTime
+	)
 	err := r.db.Pool.QueryRow(ctx, q, userID).Scan(
-		&s.UserID, &s.PlanID, &s.PlanSlug, &s.Status, &s.StripeCustomerID,
-		&s.StripeSubscriptionID, &s.CurrentPeriodEnd, &s.CreatedAt, &s.UpdatedAt,
+		&s.UserID, &s.PlanID, &s.PlanSlug, &s.Status, &customerID,
+		&subID, &periodEnd, &s.CreatedAt, &s.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, models.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	s.StripeCustomerID = customerID.String
+	s.StripeSubscriptionID = subID.String
+	if periodEnd.Valid {
+		s.CurrentPeriodEnd = periodEnd.Time
 	}
 	return &s, nil
 }
@@ -122,6 +137,21 @@ func (r *SubscriptionsRepo) Upsert(ctx context.Context, userID, planID uuid.UUID
               updated_at = now()`
 	_, err := r.db.Pool.Exec(ctx, q, userID, planID, string(status), customerID, subscriptionID)
 	return err
+}
+
+// PlanSlugForUser returns the plan slug for the user's current subscription,
+// or "" when they have none. Used by the middleware.RefreshPlan middleware to
+// show the live plan in the UI without relying on the login-time session cache.
+func (r *SubscriptionsRepo) PlanSlugForUser(ctx context.Context, userID uuid.UUID) (string, error) {
+	sub, err := r.FindByUser(ctx, userID)
+	if err != nil {
+		// No subscription row → no plan; not an error for the caller.
+		if errors.Is(err, models.ErrNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	return sub.PlanSlug, nil
 }
 
 // SetPeriodEnd updates the current_period_end column.
