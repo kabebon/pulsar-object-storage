@@ -120,10 +120,11 @@ services:
       S3_ENDPOINT: http://minio:9000
       # The host BROWSERS use to reach the bucket for presigned uploads/downloads.
       # S3_ENDPOINT above is the Docker-internal origin the app talks to; this one
-      # is what gets baked into presigned URLs. For local dev it must point at the
-      # host-exposed port (see minio.ports), otherwise the browser is handed a URL
-      # like http://minio:9000/... which it cannot resolve → "failed to fetch".
-      # Override via .env when deploying behind a real CDN.
+      # is what gets baked into presigned URLs that the BROWSER hits. For local dev
+      # it must point at the host-exposed port (see minio.ports), otherwise the
+      # browser is handed a URL like http://minio:9000/... which it cannot resolve
+      # → "failed to fetch". In production set this to the storage host Caddy
+      # fronts (https://cdn.<your-domain>) via .env, and add a matching DNS record.
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
       S3_ACCESS_KEY: "${MINIO_ROOT_USER:-admin}"
       S3_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-ChangeMe123!}"
@@ -153,8 +154,11 @@ services:
       - caddydata:/data
       - caddyconfig:/config
     environment:
-      # Override domain via PULSAR_HOST in .env (root of repo)
+      # Override domains via PULSAR_HOST / CDN_HOST in .env (root of repo).
+      # CDN_HOST is the storage host Caddy serves MinIO on (presigned uploads/
+      # downloads). It must have its own DNS record pointing at this server.
       PULSAR_HOST: ${PULSAR_HOST:-pulsar.my.id}
+      CDN_HOST: ${CDN_HOST:-cdn.pulsar.my.id}
 
 volumes:
   pgdata:

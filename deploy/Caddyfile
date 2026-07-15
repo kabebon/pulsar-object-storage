@@ -29,12 +29,24 @@
 	}
 }
 
-# CDN front: uncomment and add DNS record for cdn.pulsar.my.id when CDN is ready.
-# cdn.pulsar.my.id {
-# 	reverse_proxy pulsar:8080
-# 	encode zstd gzip
-# 	header Cache-Control "public, max-age=3600"
-# }
+# Storage / CDN front: serves the MinIO S3 API so browsers can PUT presigned
+# uploads and GET downloads directly. Presigned URLs are signed against this
+# host (S3_PUBLIC_ENDPOINT), so it MUST be reachable from the browser.
+#
+# Host header: intentionally NOT rewritten. Caddy proxies the incoming Host
+# (cdn.pulsar.my.id) unchanged by default (v2.11+), which is exactly the host
+# SigV4 signed the URL for. Rewriting it (header_up Host ...) would break the
+# signature → 403 SignatureDoesNotMatch.
+#
+# To enable: add a DNS record for cdn.pulsar.my.id pointing at this host.
+{$CDN_HOST:cdn.pulsar.my.id} {
+	reverse_proxy minio:9000
+	encode zstd gzip
+	log {
+		output stdout
+		format console
+	}
+}
 
 # Example of on-demand TLS for a customer domain (wildcard vhost):
 # https:// {
