@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -61,9 +61,12 @@ func (h *WebhooksHandler) yookassa_(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"received":true}`))
 
 	bgCtx := context.WithoutCancel(r.Context())
+	// RealIP middleware (server.go) already rewrote r.RemoteAddr to the real
+	// client IP when TRUSTED_PROXIES matches the proxy, so this is YooKassa's IP.
+	// Use SplitHostPort for IPv6-correct stripping (LastIndexByte breaks on "[::1]:443").
 	ip := r.RemoteAddr
-	if idx := strings.LastIndexByte(ip, ':'); idx > 0 {
-		ip = ip[:idx]
+	if h, _, err := net.SplitHostPort(ip); err == nil {
+		ip = h
 	}
 
 	// Background processing — do NOT block the response.

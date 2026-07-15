@@ -149,20 +149,22 @@ func planPriceRub(planSlug, interval string) int64 {
 }
 
 // planCryptoAmount returns the invoice amount in the chosen crypto asset.
-// In production, this should use a live exchange rate API.
-// These are conservative placeholder values.
+// Baseline prices are in USD (≈ USDT): Pro $1.50/mo ($15/yr),
+// Business $6.50/mo ($65/yr). Yearly is 10× monthly, matching the RUB pricing.
+// For non-USDT assets the USD amount is converted by a rough rate — replace
+// with a live exchange rate API in production.
 func planCryptoAmount(planSlug, interval, asset string) string {
-	// Baseline in USDT — update to real prices.
+	// Baseline in USD — kept in sync with planPriceRub (99/499 ₽ ≈ these USD values).
 	var usdBase float64
 	switch {
 	case planSlug == "pro" && interval == "monthly":
-		usdBase = 9.90
+		usdBase = 1.50
 	case planSlug == "pro" && interval == "yearly":
-		usdBase = 99.00
+		usdBase = 15.00
 	case planSlug == "business" && interval == "monthly":
-		usdBase = 49.90
+		usdBase = 6.50
 	case planSlug == "business" && interval == "yearly":
-		usdBase = 499.00
+		usdBase = 65.00
 	}
 	switch strings.ToUpper(asset) {
 	case "USDT":
