@@ -110,7 +110,7 @@ templ Base(props LayoutProps) {
 
 templ Header(props LayoutProps) {
 	<header class="sticky top-0 z-40 bg-[#fffaf2] border-b-2 border-[#3a2417]">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between overflow-hidden">
 			<a href="/" class="flex items-center gap-2.5 font-bold text-lg group">
 				<span class="relative inline-flex w-8 h-8 items-center justify-center bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] transition-transform group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 duration-200">
 					<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[#fffaf2]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -120,29 +120,29 @@ templ Header(props LayoutProps) {
 				</span>
 				<span class="tracking-tight font-display text-xl text-[#2b1d12] lowercase">{ props.AppName }</span>
 			</a>
-			<nav class="flex items-center gap-1 sm:gap-2 text-sm">
+			<nav class="flex items-center gap-1 sm:gap-2 text-sm shrink-0">
 				if props.Auth != nil {
 					<a
 						href="/app"
-						class={ "relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
+						class={ "hidden sm:block relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
 							templ.KV("text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12]", props.Active == "dashboard"),
 							templ.KV("text-[#2b1d12] border-2 border-transparent", props.Active != "dashboard") }
 					>Кабинет</a>
 					<a
 						href="/app/buckets"
-						class={ "relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
+						class={ "hidden sm:block relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
 							templ.KV("text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12]", props.Active == "buckets"),
 							templ.KV("text-[#2b1d12] border-2 border-transparent", props.Active != "buckets") }
 					>Бакеты</a>
 					<a
 						href="/app/billing"
-						class={ "relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
+						class={ "hidden sm:block relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
 							templ.KV("text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12]", props.Active == "billing"),
 							templ.KV("text-[#2b1d12] border-2 border-transparent", props.Active != "billing") }
 					>Тариф</a>
 					<a
 						href="/app/settings"
-						class={ "relative px-3 py-2 transition-colors duration-200 hover:bg-[#f0e6d6]",
+						class={ "relative px-2 py-2 sm:px-3 transition-colors duration-200 hover:bg-[#f0e6d6]",
 							templ.KV("text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12]", props.Active == "settings"),
 							templ.KV("text-[#2b1d12] border-2 border-transparent", props.Active != "settings") }
 					>
@@ -150,10 +150,14 @@ templ Header(props LayoutProps) {
 							{ initial(props.Auth.Name) }
 						</span>
 					</a>
+					<!-- Mobile: hamburger-style link icon -->
+					<a href="/app" class="sm:hidden flex items-center justify-center w-9 h-9 border-2 border-[#2b1d12] bg-[#fffaf2] text-[#2b1d12]">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+					</a>
 				} else {
-					<a href="/pricing" class={ "px-3 py-2 transition-colors duration-200 hover:text-[#b06a2c] border-2 border-transparent", templ.KV("text-[#b06a2c]", props.Active == "pricing") }>Тарифы</a>
-					<a href="/login" class="px-4 py-2 font-pixel text-[10px] leading-none text-[#2b1d12] bg-[#fffaf2] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] hover:shadow-[4px_4px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Войти</a>
-					<a href="/register" class="relative px-4 py-2 font-pixel text-[10px] leading-none text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] hover:shadow-[4px_4px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200">Регистрация</a>
+					<a href="/pricing" class={ "hidden sm:block px-3 py-2 transition-colors duration-200 hover:text-[#b06a2c] border-2 border-transparent", templ.KV("text-[#b06a2c]", props.Active == "pricing") }>Тарифы</a>
+					<a href="/login" class="px-2.5 py-1.5 sm:px-4 sm:py-2 font-pixel text-[8px] sm:text-[10px] leading-none text-[#2b1d12] bg-[#fffaf2] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] hover:shadow-[4px_4px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap">Войти</a>
+					<a href="/register" class="relative px-2.5 py-1.5 sm:px-4 sm:py-2 font-pixel text-[8px] sm:text-[10px] leading-none text-[#fffaf2] bg-[#b06a2c] border-2 border-[#2b1d12] shadow-[3px_3px_0_0_#2b1d12] hover:shadow-[4px_4px_0_0_#2b1d12] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap">Регистрация</a>
 				}
 			</nav>
 		</div>
